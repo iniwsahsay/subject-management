@@ -11,6 +11,7 @@ const router = express.Router();
  *     Subject:
  *       type: object
  *       required:
+ *         - subject_id
  *         - subject_name
  *         - subject_code
  *         - description
@@ -22,6 +23,9 @@ const router = express.Router();
  *           type: string
  *           readOnly: true
  *           example: 68c123abc456789def012345
+ *         subject_id:
+ *           type: integer
+ *           example: 101
  *         subject_name:
  *           type: string
  *           example: Mathematics
@@ -36,10 +40,10 @@ const router = express.Router();
  *           example: 4
  *         course_id:
  *           type: integer
- *           example: 101
+ *           example: 10
  *         school_id:
  *           type: integer
- *           example: 10
+ *           example: 1
  */
 
 /**
@@ -60,7 +64,7 @@ const router = express.Router();
  *       400:
  *         description: Bad request
  *       409:
- *         description: Subject code already exists
+ *         description: Subject ID or subject code already exists
  *       500:
  *         description: Internal server error
  */
@@ -82,17 +86,17 @@ router.get("/", subjectController.getAllSubjects);
 
 /**
  * @swagger
- * /api/subjects/{id}:
+ * /api/subjects/{subject_id}:
  *   get:
- *     summary: Get a subject by MongoDB ID
+ *     summary: Get a subject by subject ID
  *     tags: [Subjects]
  *     parameters:
  *       - in: path
- *         name: id
+ *         name: subject_id
  *         required: true
  *         schema:
- *           type: string
- *         example: 68c123abc456789def012345
+ *           type: integer
+ *         example: 101
  *     responses:
  *       200:
  *         description: Subject found
@@ -103,21 +107,21 @@ router.get("/", subjectController.getAllSubjects);
  *       500:
  *         description: Internal server error
  */
-router.get("/:id", subjectController.getSubjectById);
+router.get("/:subject_id", subjectController.getSubjectById);
 
 /**
  * @swagger
- * /api/subjects/{id}:
+ * /api/subjects/{subject_id}:
  *   put:
  *     summary: Update a subject
  *     tags: [Subjects]
  *     parameters:
  *       - in: path
- *         name: id
+ *         name: subject_id
  *         required: true
  *         schema:
- *           type: string
- *         example: 68c123abc456789def012345
+ *           type: integer
+ *         example: 101
  *     requestBody:
  *       required: true
  *       content:
@@ -136,21 +140,21 @@ router.get("/:id", subjectController.getSubjectById);
  *       500:
  *         description: Internal server error
  */
-router.put("/:id", subjectController.updateSubject);
+router.put("/:subject_id", subjectController.updateSubject);
 
 /**
  * @swagger
- * /api/subjects/{id}:
+ * /api/subjects/{subject_id}:
  *   delete:
  *     summary: Delete a subject
  *     tags: [Subjects]
  *     parameters:
  *       - in: path
- *         name: id
+ *         name: subject_id
  *         required: true
  *         schema:
- *           type: string
- *         example: 68c123abc456789def012345
+ *           type: integer
+ *         example: 101
  *     responses:
  *       200:
  *         description: Subject deleted successfully
@@ -161,6 +165,6 @@ router.put("/:id", subjectController.updateSubject);
  *       500:
  *         description: Internal server error
  */
-router.delete("/:id", subjectController.deleteSubject);
+router.delete("/:subject_id", subjectController.deleteSubject);
 
 module.exports = router;

@@ -13,6 +13,7 @@ class SubjectValidator {
     static validateCommonFields(data) {
 
         const {
+            subject_id,
             subject_name,
             subject_code,
             description,
@@ -20,6 +21,16 @@ class SubjectValidator {
             course_id,
             school_id
         } = data;
+
+        // Subject ID
+        if (
+            !Number.isInteger(subject_id) ||
+            subject_id <= 0
+        ) {
+            throw new BadRequestError(
+                "subject_id is required and must be a positive integer"
+            );
+        }
 
         // Subject Name
         if (

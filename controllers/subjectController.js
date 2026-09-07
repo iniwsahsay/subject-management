@@ -1,12 +1,16 @@
 const subjectService = require("../services/subjectService");
+
 const logger = require("../utils/logger");
+
 const SubjectValidator = require("../validators/subjectValidator");
 
 class SubjectController {
 
     // CREATE SUBJECT
     async createSubject(req, res, next) {
+
         try {
+
             logger.info("Create subject request received");
 
             SubjectValidator.validateCreate(req.body);
@@ -20,6 +24,7 @@ class SubjectController {
             });
 
         } catch (error) {
+
             next(error);
         }
     }
@@ -27,7 +32,9 @@ class SubjectController {
 
     // GET ALL SUBJECTS
     async getAllSubjects(req, res, next) {
+
         try {
+
             logger.info("Get all subjects request received");
 
             const subjects = await subjectService.getAllSubjects();
@@ -39,6 +46,7 @@ class SubjectController {
             });
 
         } catch (error) {
+
             next(error);
         }
     }
@@ -46,8 +54,10 @@ class SubjectController {
 
     // GET SUBJECT BY ID
     async getSubjectById(req, res, next) {
+
         try {
-            const subjectId = req.params.id ;
+
+            const subjectId = req.params.subject_id;
 
             logger.info("Get subject by ID request received", {
                 subject_id: subjectId
@@ -62,6 +72,7 @@ class SubjectController {
             });
 
         } catch (error) {
+
             next(error);
         }
     }
@@ -69,14 +80,16 @@ class SubjectController {
 
     // UPDATE SUBJECT
     async updateSubject(req, res, next) {
-        try {
-            const subjectId = req.params.id;
 
-            SubjectValidator.validateUpdate(req.body);
+        try {
+
+            const subjectId = req.params.subject_id;
 
             logger.info("Update subject request received", {
                 subject_id: subjectId
             });
+
+            SubjectValidator.validateUpdate(req.body);
 
             const subject =
                 await subjectService.updateSubject(
@@ -91,6 +104,7 @@ class SubjectController {
             });
 
         } catch (error) {
+
             next(error);
         }
     }
@@ -98,8 +112,10 @@ class SubjectController {
 
     // DELETE SUBJECT
     async deleteSubject(req, res, next) {
+
         try {
-            const subjectId = req.params.id;
+
+            const subjectId = req.params.subject_id;
 
             logger.info("Delete subject request received", {
                 subject_id: subjectId
@@ -114,6 +130,7 @@ class SubjectController {
             });
 
         } catch (error) {
+
             next(error);
         }
     }

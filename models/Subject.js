@@ -2,6 +2,13 @@ const mongoose = require("mongoose");
 
 const subjectSchema = new mongoose.Schema(
     {
+        subject_id: {
+            type: Number,
+            required: true,
+            unique: true,
+            min: 1
+        },
+
         subject_name: {
             type: String,
             required: true,

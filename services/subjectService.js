@@ -1,4 +1,5 @@
 const Subject = require("../models/Subject");
+
 const logger = require("../utils/logger");
 
 const {
@@ -12,7 +13,9 @@ class SubjectService {
     // CREATE
     async createSubject(subjectData) {
         try {
+
             const {
+                subject_id,
                 subject_name,
                 subject_code,
                 description,
@@ -21,17 +24,28 @@ class SubjectService {
                 school_id
             } = subjectData;
 
-            const existingSubject = await Subject.findOne({
+            const existingSubjectId = await Subject.findOne({
+                subject_id
+            });
+
+            if (existingSubjectId) {
+                throw new ConflictError(
+                    `Subject ID '${subject_id}' already exists`
+                );
+            }
+
+            const existingSubjectCode = await Subject.findOne({
                 subject_code
             });
 
-            if (existingSubject) {
+            if (existingSubjectCode) {
                 throw new ConflictError(
                     `Subject code '${subject_code}' already exists`
                 );
             }
 
             const subject = await Subject.create({
+                subject_id,
                 subject_name,
                 subject_code,
                 description,
@@ -41,13 +55,14 @@ class SubjectService {
             });
 
             logger.info("Subject created successfully", {
-                subject_id: subject._id,
+                subject_id: subject.subject_id,
                 subject_code: subject.subject_code
             });
 
             return subject;
 
         } catch (error) {
+
             logger.error("Error creating subject", {
                 error: error.message,
                 stack: error.stack
@@ -59,7 +74,7 @@ class SubjectService {
 
             if (error.code === 11000) {
                 throw new ConflictError(
-                    `Subject code '${subjectData.subject_code}' already exists`
+                    `Subject ID '${subjectData.subject_id}' or subject code '${subjectData.subject_code}' already exists`
                 );
             }
 
@@ -70,6 +85,7 @@ class SubjectService {
     // READ ALL
     async getAllSubjects() {
         try {
+
             const subjects = await Subject.find()
                 .sort({ createdAt: -1 });
 
@@ -80,6 +96,7 @@ class SubjectService {
             return subjects;
 
         } catch (error) {
+
             logger.error("Error retrieving subjects", {
                 error: error.message,
                 stack: error.stack
@@ -97,7 +114,10 @@ class SubjectService {
         }
 
         try {
-            const subject = await Subject.findById(subjectId);
+
+            const subject = await Subject.findOne({
+                subject_id: Number(subjectId)
+            });
 
             if (!subject) {
                 throw new NotFoundError(
@@ -108,6 +128,7 @@ class SubjectService {
             return subject;
 
         } catch (error) {
+
             logger.error("Error retrieving subject", {
                 subject_id: subjectId,
                 error: error.message,
@@ -133,7 +154,10 @@ class SubjectService {
         }
 
         try {
-            const subject = await Subject.findById(subjectId);
+
+            const subject = await Subject.findOne({
+                subject_id: Number(subjectId)
+            });
 
             if (!subject) {
                 throw new NotFoundError(
@@ -142,9 +166,12 @@ class SubjectService {
             }
 
             if (subjectData.subject_code) {
+
                 const existingSubject = await Subject.findOne({
                     subject_code: subjectData.subject_code,
-                    _id: { $ne: subjectId }
+                    subject_id: {
+                        $ne: Number(subjectId)
+                    }
                 });
 
                 if (existingSubject) {
@@ -154,9 +181,15 @@ class SubjectService {
                 }
             }
 
-            const updatedSubject = await Subject.findByIdAndUpdate(
-                subjectId,
-                subjectData,
+            // Prevent subject_id from being changed
+            const updateData = { ...subjectData };
+            delete updateData.subject_id;
+
+            const updatedSubject = await Subject.findOneAndUpdate(
+                {
+                    subject_id: Number(subjectId)
+                },
+                updateData,
                 {
                     new: true,
                     runValidators: true
@@ -170,6 +203,7 @@ class SubjectService {
             return updatedSubject;
 
         } catch (error) {
+
             logger.error("Error updating subject", {
                 subject_id: subjectId,
                 error: error.message,
@@ -186,7 +220,7 @@ class SubjectService {
 
             if (error.code === 11000) {
                 throw new ConflictError(
-                    `Subject code '${subjectData.subject_code}' already exists`
+                    `Subject ID '${subjectData.subject_id}' or subject code '${subjectData.subject_code}' already exists`
                 );
             }
 
@@ -202,7 +236,10 @@ class SubjectService {
         }
 
         try {
-            const subject = await Subject.findByIdAndDelete(subjectId);
+
+            const subject = await Subject.findOneAndDelete({
+                subject_id: Number(subjectId)
+            });
 
             if (!subject) {
                 throw new NotFoundError(
@@ -211,7 +248,7 @@ class SubjectService {
             }
 
             logger.info("Subject deleted successfully", {
-                subject_id: subjectId
+                subject_id: subject.subject_id
             });
 
             return {
@@ -219,6 +256,7 @@ class SubjectService {
             };
 
         } catch (error) {
+
             logger.error("Error deleting subject", {
                 subject_id: subjectId,
                 error: error.message,
