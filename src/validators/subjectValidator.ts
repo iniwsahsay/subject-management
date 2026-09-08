@@ -1,18 +1,44 @@
-const { BadRequestError } = require("../utils/AppError");
+import { BadRequestError } from "../utils/AppError";
+
+interface SubjectData {
+    subject_id: number;
+    subject_name: string;
+    subject_code: string;
+    description: string;
+    credits: number;
+    course_id: number;
+    school_id: number;
+}
+
+interface UpdateSubjectData {
+    subject_id?: number;
+    subject_name?: string;
+    subject_code?: string;
+    description?: string;
+    credits?: number;
+    course_id?: number;
+    school_id?: number;
+}
 
 class SubjectValidator {
 
-    static validateCreate(data) {
+    // CREATE
+    static validateCreate(data: SubjectData): void {
         this.validateCommonFields(data);
     }
 
-    static validateUpdate(data) {
+    // UPDATE
+    static validateUpdate(data: UpdateSubjectData): void {
         this.validateCommonFields(data);
     }
 
-    static validateCommonFields(data) {
+    // COMMON VALIDATION
+    static validateCommonFields(
+        data: SubjectData | UpdateSubjectData
+    ): void {
 
         const {
+            subject_id,
             subject_name,
             subject_code,
             description,
@@ -20,6 +46,19 @@ class SubjectValidator {
             course_id,
             school_id
         } = data;
+
+
+        // Subject ID
+        if (
+            typeof subject_id !== "number" ||
+            !Number.isInteger(subject_id) ||
+            subject_id <= 0
+        ) {
+            throw new BadRequestError(
+                "subject_id is required and must be a positive integer"
+            );
+        }
+
 
         // Subject Name
         if (
@@ -31,6 +70,7 @@ class SubjectValidator {
             );
         }
 
+
         // Subject Code
         if (
             typeof subject_code !== "string" ||
@@ -40,6 +80,7 @@ class SubjectValidator {
                 "subject_code is required and must be a string"
             );
         }
+
 
         // Description - REQUIRED
         if (
@@ -51,8 +92,10 @@ class SubjectValidator {
             );
         }
 
+
         // Credits - REQUIRED
         if (
+            typeof credits !== "number" ||
             !Number.isInteger(credits) ||
             credits <= 0
         ) {
@@ -61,8 +104,10 @@ class SubjectValidator {
             );
         }
 
+
         // Course ID - REQUIRED
         if (
+            typeof course_id !== "number" ||
             !Number.isInteger(course_id) ||
             course_id <= 0
         ) {
@@ -71,8 +116,10 @@ class SubjectValidator {
             );
         }
 
+
         // School ID - REQUIRED
         if (
+            typeof school_id !== "number" ||
             !Number.isInteger(school_id) ||
             school_id <= 0
         ) {
@@ -83,4 +130,4 @@ class SubjectValidator {
     }
 }
 
-module.exports = SubjectValidator;
+export default SubjectValidator;
