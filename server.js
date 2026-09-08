@@ -14,7 +14,7 @@ const startServer = async () => {
             logger.info(`Server started successfully on port ${PORT}`);
 
             console.log(`Server running at http://localhost:${PORT}`);
-            console.log(`Swagger UI: http://localhost:${PORT}/api-docs`);
+           console.log("Swagger UI: http://localhost:3000/Subject_Management_API");
         });
     } catch (error) {
         logger.error("Failed to start server", {
