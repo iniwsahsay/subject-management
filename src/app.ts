@@ -1,12 +1,12 @@
-const express = require("express");
-const morgan = require("morgan");
-const swaggerUi = require("swagger-ui-express");
+import express, { Request, Response } from "express";
+import morgan from "morgan";
+import swaggerUi from "swagger-ui-express";
 
-const subjectRoutes = require("./routes/subjectRoutes");
-const swaggerSpec = require("./config/swagger");
-const logger = require("./utils/logger");
-const notFound = require("./middleware/notFound");
-const errorHandler = require("./middleware/errorHandler");
+import subjectRoutes from "./routes/subjectRoutes";
+import swaggerSpec from "./config/swagger";
+import logger from "./utils/logger";
+import notFound from "./middleware/notFound";
+import errorHandler from "./middleware/errorHandler";
 
 const app = express();
 
@@ -17,7 +17,7 @@ app.use(express.json());
 app.use(
     morgan("combined", {
         stream: {
-            write: (message) => {
+            write: (message: string) => {
                 logger.info(message.trim());
             }
         }
@@ -25,7 +25,7 @@ app.use(
 );
 
 // Health check
-app.get("/health", (req, res) => {
+app.get("/health", (req: Request, res: Response) => {
     res.status(200).json({
         success: true,
         message: "Server is running"
@@ -48,4 +48,4 @@ app.use(notFound);
 // Central error handler
 app.use(errorHandler);
 
-module.exports = app;
+export default app;

@@ -1,19 +1,37 @@
-const Subject = require("../models/Subject");
+import Subject from "../models/Subject";
+import logger from "../utils/logger";
 
-const logger = require("../utils/logger");
-
-const {
+import {
     BadRequestError,
     NotFoundError,
     ConflictError
-} = require("../utils/AppError");
+} from "../utils/AppError";
+
+interface SubjectData {
+    subject_id: number;
+    subject_name: string;
+    subject_code: string;
+    description: string;
+    credits: number;
+    course_id: number;
+    school_id: number;
+}
+
+interface UpdateSubjectData {
+    subject_id?: number;
+    subject_name?: string;
+    subject_code?: string;
+    description?: string;
+    credits?: number;
+    course_id?: number;
+    school_id?: number;
+}
 
 class SubjectService {
 
     // CREATE
-    async createSubject(subjectData) {
+    async createSubject(subjectData: SubjectData) {
         try {
-
             const {
                 subject_id,
                 subject_name,
@@ -61,18 +79,24 @@ class SubjectService {
 
             return subject;
 
-        } catch (error) {
-
-            logger.error("Error creating subject", {
-                error: error.message,
-                stack: error.stack
-            });
+        } catch (error: unknown) {
+            if (error instanceof Error) {
+                logger.error("Error creating subject", {
+                    error: error.message,
+                    stack: error.stack
+                });
+            }
 
             if (error instanceof ConflictError) {
                 throw error;
             }
 
-            if (error.code === 11000) {
+            if (
+                typeof error === "object" &&
+                error !== null &&
+                "code" in error &&
+                (error as { code: number }).code === 11000
+            ) {
                 throw new ConflictError(
                     `Subject ID '${subjectData.subject_id}' or subject code '${subjectData.subject_code}' already exists`
                 );
@@ -85,7 +109,6 @@ class SubjectService {
     // READ ALL
     async getAllSubjects() {
         try {
-
             const subjects = await Subject.find()
                 .sort({ createdAt: -1 });
 
@@ -95,26 +118,25 @@ class SubjectService {
 
             return subjects;
 
-        } catch (error) {
-
-            logger.error("Error retrieving subjects", {
-                error: error.message,
-                stack: error.stack
-            });
+        } catch (error: unknown) {
+            if (error instanceof Error) {
+                logger.error("Error retrieving subjects", {
+                    error: error.message,
+                    stack: error.stack
+                });
+            }
 
             throw error;
         }
     }
 
     // READ BY ID
-    async getSubjectById(subjectId) {
-
+    async getSubjectById(subjectId: number) {
         if (!subjectId) {
             throw new BadRequestError("Invalid subject_id");
         }
 
         try {
-
             const subject = await Subject.findOne({
                 subject_id: Number(subjectId)
             });
@@ -127,13 +149,14 @@ class SubjectService {
 
             return subject;
 
-        } catch (error) {
-
-            logger.error("Error retrieving subject", {
-                subject_id: subjectId,
-                error: error.message,
-                stack: error.stack
-            });
+        } catch (error: unknown) {
+            if (error instanceof Error) {
+                logger.error("Error retrieving subject", {
+                    subject_id: subjectId,
+                    error: error.message,
+                    stack: error.stack
+                });
+            }
 
             if (
                 error instanceof BadRequestError ||
@@ -147,14 +170,15 @@ class SubjectService {
     }
 
     // UPDATE
-    async updateSubject(subjectId, subjectData) {
-
+    async updateSubject(
+        subjectId: number,
+        subjectData: UpdateSubjectData
+    ) {
         if (!subjectId) {
             throw new BadRequestError("Invalid subject_id");
         }
 
         try {
-
             const subject = await Subject.findOne({
                 subject_id: Number(subjectId)
             });
@@ -166,7 +190,6 @@ class SubjectService {
             }
 
             if (subjectData.subject_code) {
-
                 const existingSubject = await Subject.findOne({
                     subject_code: subjectData.subject_code,
                     subject_id: {
@@ -183,6 +206,7 @@ class SubjectService {
 
             // Prevent subject_id from being changed
             const updateData = { ...subjectData };
+
             delete updateData.subject_id;
 
             const updatedSubject = await Subject.findOneAndUpdate(
@@ -202,13 +226,14 @@ class SubjectService {
 
             return updatedSubject;
 
-        } catch (error) {
-
-            logger.error("Error updating subject", {
-                subject_id: subjectId,
-                error: error.message,
-                stack: error.stack
-            });
+        } catch (error: unknown) {
+            if (error instanceof Error) {
+                logger.error("Error updating subject", {
+                    subject_id: subjectId,
+                    error: error.message,
+                    stack: error.stack
+                });
+            }
 
             if (
                 error instanceof ConflictError ||
@@ -218,7 +243,12 @@ class SubjectService {
                 throw error;
             }
 
-            if (error.code === 11000) {
+            if (
+                typeof error === "object" &&
+                error !== null &&
+                "code" in error &&
+                (error as { code: number }).code === 11000
+            ) {
                 throw new ConflictError(
                     `Subject ID '${subjectData.subject_id}' or subject code '${subjectData.subject_code}' already exists`
                 );
@@ -229,14 +259,12 @@ class SubjectService {
     }
 
     // DELETE
-    async deleteSubject(subjectId) {
-
+    async deleteSubject(subjectId: number) {
         if (!subjectId) {
             throw new BadRequestError("Invalid subject_id");
         }
 
         try {
-
             const subject = await Subject.findOneAndDelete({
                 subject_id: Number(subjectId)
             });
@@ -255,17 +283,18 @@ class SubjectService {
                 message: "Subject deleted successfully"
             };
 
-        } catch (error) {
-
-            logger.error("Error deleting subject", {
-                subject_id: subjectId,
-                error: error.message,
-                stack: error.stack
-            });
+        } catch (error: unknown) {
+            if (error instanceof Error) {
+                logger.error("Error deleting subject", {
+                    subject_id: subjectId,
+                    error: error.message,
+                    stack: error.stack
+                });
+            }
 
             throw error;
         }
     }
 }
 
-module.exports = new SubjectService();
+export default new SubjectService();

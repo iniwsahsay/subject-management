@@ -1,6 +1,6 @@
-const express = require("express");
+import express from "express";
 
-const subjectController = require("../controllers/subjectController");
+import subjectController from "../controllers/subjectController";
 
 const router = express.Router();
 
@@ -96,7 +96,7 @@ router.get("/", subjectController.getAllSubjects);
  *         required: true
  *         schema:
  *           type: integer
- *         example: 101
+ *           example: 101
  *     responses:
  *       200:
  *         description: Subject found
@@ -121,7 +121,7 @@ router.get("/:subject_id", subjectController.getSubjectById);
  *         required: true
  *         schema:
  *           type: integer
- *         example: 101
+ *           example: 101
  *     requestBody:
  *       required: true
  *       content:
@@ -154,7 +154,7 @@ router.put("/:subject_id", subjectController.updateSubject);
  *         required: true
  *         schema:
  *           type: integer
- *         example: 101
+ *           example: 101
  *     responses:
  *       200:
  *         description: Subject deleted successfully
@@ -167,4 +167,4 @@ router.put("/:subject_id", subjectController.updateSubject);
  */
 router.delete("/:subject_id", subjectController.deleteSubject);
 
-module.exports = router;
+export default router;

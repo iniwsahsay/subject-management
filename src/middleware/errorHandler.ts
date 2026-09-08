@@ -1,8 +1,14 @@
-const logger = require("../utils/logger");
-const { AppError } = require("../utils/AppError");
+import { Request, Response, NextFunction } from "express";
 
-const errorHandler = (err, req, res, next) => {
+import logger from "../utils/logger";
+import { AppError } from "../utils/AppError";
 
+const errorHandler = (
+    err: Error,
+    req: Request,
+    res: Response,
+    next: NextFunction
+) => {
     logger.error("Unhandled application error", {
         method: req.method,
         url: req.originalUrl,
@@ -31,4 +37,4 @@ const errorHandler = (err, req, res, next) => {
     });
 };
 
-module.exports = errorHandler;
+export default errorHandler;

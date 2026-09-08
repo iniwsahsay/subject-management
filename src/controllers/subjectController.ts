@@ -1,16 +1,38 @@
-const subjectService = require("../services/subjectService");
+import { Request, Response, NextFunction } from "express";
 
-const logger = require("../utils/logger");
+import subjectService from "../services/subjectService";
+import logger from "../utils/logger";
+import SubjectValidator from "../validators/subjectValidator";
 
-const SubjectValidator = require("../validators/subjectValidator");
+interface SubjectRequestBody {
+    subject_id: number;
+    subject_name: string;
+    subject_code: string;
+    description: string;
+    credits: number;
+    course_id: number;
+    school_id: number;
+}
+
+interface UpdateSubjectRequestBody {
+    subject_id?: number;
+    subject_name?: string;
+    subject_code?: string;
+    description?: string;
+    credits?: number;
+    course_id?: number;
+    school_id?: number;
+}
 
 class SubjectController {
 
     // CREATE SUBJECT
-    async createSubject(req, res, next) {
-
+    async createSubject(
+        req: Request<{}, {}, SubjectRequestBody>,
+        res: Response,
+        next: NextFunction
+    ): Promise<void> {
         try {
-
             logger.info("Create subject request received");
 
             SubjectValidator.validateCreate(req.body);
@@ -22,19 +44,19 @@ class SubjectController {
                 message: "Subject created successfully",
                 data: subject
             });
-
-        } catch (error) {
-
+        } catch (error: unknown) {
             next(error);
         }
     }
 
 
     // GET ALL SUBJECTS
-    async getAllSubjects(req, res, next) {
-
+    async getAllSubjects(
+        req: Request,
+        res: Response,
+        next: NextFunction
+    ): Promise<void> {
         try {
-
             logger.info("Get all subjects request received");
 
             const subjects = await subjectService.getAllSubjects();
@@ -44,20 +66,20 @@ class SubjectController {
                 count: subjects.length,
                 data: subjects
             });
-
-        } catch (error) {
-
+        } catch (error: unknown) {
             next(error);
         }
     }
 
 
     // GET SUBJECT BY ID
-    async getSubjectById(req, res, next) {
-
+    async getSubjectById(
+        req: Request<{ subject_id: string }>,
+        res: Response,
+        next: NextFunction
+    ): Promise<void> {
         try {
-
-            const subjectId = req.params.subject_id;
+            const subjectId = Number(req.params.subject_id);
 
             logger.info("Get subject by ID request received", {
                 subject_id: subjectId
@@ -70,20 +92,24 @@ class SubjectController {
                 success: true,
                 data: subject
             });
-
-        } catch (error) {
-
+        } catch (error: unknown) {
             next(error);
         }
     }
 
 
     // UPDATE SUBJECT
-    async updateSubject(req, res, next) {
-
+    async updateSubject(
+        req: Request<
+            { subject_id: string },
+            {},
+            UpdateSubjectRequestBody
+        >,
+        res: Response,
+        next: NextFunction
+    ): Promise<void> {
         try {
-
-            const subjectId = req.params.subject_id;
+            const subjectId = Number(req.params.subject_id);
 
             logger.info("Update subject request received", {
                 subject_id: subjectId
@@ -102,20 +128,20 @@ class SubjectController {
                 message: "Subject updated successfully",
                 data: subject
             });
-
-        } catch (error) {
-
+        } catch (error: unknown) {
             next(error);
         }
     }
 
 
     // DELETE SUBJECT
-    async deleteSubject(req, res, next) {
-
+    async deleteSubject(
+        req: Request<{ subject_id: string }>,
+        res: Response,
+        next: NextFunction
+    ): Promise<void> {
         try {
-
-            const subjectId = req.params.subject_id;
+            const subjectId = Number(req.params.subject_id);
 
             logger.info("Delete subject request received", {
                 subject_id: subjectId
@@ -128,12 +154,10 @@ class SubjectController {
                 success: true,
                 ...result
             });
-
-        } catch (error) {
-
+        } catch (error: unknown) {
             next(error);
         }
     }
 }
 
-module.exports = new SubjectController();
+export default new SubjectController();

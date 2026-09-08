@@ -1,6 +1,16 @@
-const mongoose = require("mongoose");
+import mongoose, { Document, Schema } from "mongoose";
 
-const subjectSchema = new mongoose.Schema(
+interface ISubject extends Document {
+    subject_id: number;
+    subject_name: string;
+    subject_code: string;
+    description: string;
+    credits: number;
+    course_id: number;
+    school_id: number;
+}
+
+const subjectSchema = new Schema<ISubject>(
     {
         subject_id: {
             type: Number,
@@ -51,4 +61,6 @@ const subjectSchema = new mongoose.Schema(
     }
 );
 
-module.exports = mongoose.model("Subject", subjectSchema);
+const Subject = mongoose.model<ISubject>("Subject", subjectSchema);
+
+export default Subject;
