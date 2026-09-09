@@ -15,7 +15,7 @@ const startServer = async (): Promise<void> => {
 
             console.log(`Server running at http://localhost:${PORT}`);
             console.log(
-                "Swagger UI: http://localhost:3000/Subject_Management_API"
+                "Swagger UI: http://localhost:3000/Subject-Management-API"
             );
         });
     } catch (error) {

@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
-
 import logger from "../utils/logger";
 import { AppError } from "../utils/AppError";
+import { errorResponse } from "../utils/response";
 
 const errorHandler = (
     err: Error,
@@ -9,32 +9,41 @@ const errorHandler = (
     res: Response,
     next: NextFunction
 ) => {
-    logger.error("Unhandled application error", {
+    const isAppError = err instanceof AppError;
+
+    const statusCode = isAppError
+        ? err.statusCode
+        : 500;
+
+    const errorCode = isAppError
+        ? err.code
+        : "INTERNAL_SERVER_ERROR";
+
+    logger.error(`Application error: ${err.message}`, {
         method: req.method,
         url: req.originalUrl,
         error: err.message,
+        errorType: err.constructor.name,
+        statusCode,
+        code: errorCode,
         stack: err.stack
     });
 
-    // Our custom application errors
-    if (err instanceof AppError) {
-        return res.status(err.statusCode).json({
-            success: false,
-            error: {
-                code: err.code,
-                message: err.message
-            }
-        });
+    if (isAppError) {
+        return res.status(statusCode).json(
+            errorResponse(
+                "Request failed",
+                err.message
+            )
+        );
     }
 
-    // Unexpected errors
-    return res.status(500).json({
-        success: false,
-        error: {
-            code: "INTERNAL_SERVER_ERROR",
-            message: "An unexpected error occurred"
-        }
-    });
+    return res.status(500).json(
+        errorResponse(
+            "Request failed",
+            "An unexpected error occurred"
+        )
+    );
 };
 
 export default errorHandler;

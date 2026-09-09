@@ -1,8 +1,7 @@
+import { successResponse } from "../utils/response";
 import { Request, Response, NextFunction } from "express";
-
 import subjectService from "../services/subjectService";
 import logger from "../utils/logger";
-import SubjectValidator from "../validators/subjectValidator";
 
 interface SubjectRequestBody {
     subject_id: number;
@@ -12,6 +11,8 @@ interface SubjectRequestBody {
     credits: number;
     course_id: number;
     school_id: number;
+    semester: number;
+    department: string;
 }
 
 interface UpdateSubjectRequestBody {
@@ -22,6 +23,8 @@ interface UpdateSubjectRequestBody {
     credits?: number;
     course_id?: number;
     school_id?: number;
+    semester?: number;
+    department?: string;
 }
 
 class SubjectController {
@@ -35,15 +38,12 @@ class SubjectController {
         try {
             logger.info("Create subject request received");
 
-            SubjectValidator.validateCreate(req.body);
-
             const subject = await subjectService.createSubject(req.body);
 
-            res.status(201).json({
-                success: true,
-                message: "Subject created successfully",
-                data: subject
-            });
+            res.status(201).json(
+                successResponse("success", subject)
+            );
+
         } catch (error: unknown) {
             next(error);
         }
@@ -61,11 +61,10 @@ class SubjectController {
 
             const subjects = await subjectService.getAllSubjects();
 
-            res.status(200).json({
-                success: true,
-                count: subjects.length,
-                data: subjects
-            });
+            res.status(200).json(
+                successResponse("success", subjects)
+            );
+
         } catch (error: unknown) {
             next(error);
         }
@@ -85,13 +84,12 @@ class SubjectController {
                 subject_id: subjectId
             });
 
-            const subject =
-                await subjectService.getSubjectById(subjectId);
+            const subject = await subjectService.getSubjectById(subjectId);
 
-            res.status(200).json({
-                success: true,
-                data: subject
-            });
+            res.status(200).json(
+                successResponse("success", subject)
+            );
+
         } catch (error: unknown) {
             next(error);
         }
@@ -115,19 +113,15 @@ class SubjectController {
                 subject_id: subjectId
             });
 
-            SubjectValidator.validateUpdate(req.body);
+            const subject = await subjectService.updateSubject(
+                subjectId,
+                req.body
+            );
 
-            const subject =
-                await subjectService.updateSubject(
-                    subjectId,
-                    req.body
-                );
+            res.status(200).json(
+                successResponse("success", subject)
+            );
 
-            res.status(200).json({
-                success: true,
-                message: "Subject updated successfully",
-                data: subject
-            });
         } catch (error: unknown) {
             next(error);
         }
@@ -147,13 +141,12 @@ class SubjectController {
                 subject_id: subjectId
             });
 
-            const result =
-                await subjectService.deleteSubject(subjectId);
+            const result = await subjectService.deleteSubject(subjectId);
 
-            res.status(200).json({
-                success: true,
-                ...result
-            });
+            res.status(200).json(
+                successResponse("success", result)
+            );
+
         } catch (error: unknown) {
             next(error);
         }

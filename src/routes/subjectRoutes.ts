@@ -1,6 +1,9 @@
 import express from "express";
-
 import subjectController from "../controllers/subjectController";
+import {
+    validateSubject,
+    validateSubjectUpdate
+} from "../middleware/validationMiddleware";
 
 const router = express.Router();
 
@@ -60,15 +63,15 @@ const router = express.Router();
  *             $ref: '#/components/schemas/Subject'
  *     responses:
  *       201:
- *         description: Subject created successfully
+ *         description: Subject Created Successfully
  *       400:
- *         description: Bad request
+ *         description: Invalid Subject Data
  *       409:
- *         description: Subject ID or subject code already exists
+ *         description: Subject ID or Code Already Exists
  *       500:
- *         description: Internal server error
+ *         description: Internal Server Error
  */
-router.post("/", subjectController.createSubject);
+router.post("/", validateSubject, subjectController.createSubject);
 
 /**
  * @swagger
@@ -78,9 +81,9 @@ router.post("/", subjectController.createSubject);
  *     tags: [Subjects]
  *     responses:
  *       200:
- *         description: List of all subjects
+ *         description: Subjects Retrieved Successfully
  *       500:
- *         description: Internal server error
+ *         description: Internal Server Error
  */
 router.get("/", subjectController.getAllSubjects);
 
@@ -99,13 +102,13 @@ router.get("/", subjectController.getAllSubjects);
  *           example: 101
  *     responses:
  *       200:
- *         description: Subject found
+ *         description: Subject Found
  *       400:
- *         description: Invalid subject ID
+ *         description: Invalid Subject ID
  *       404:
- *         description: Subject not found
+ *         description: Subject Not Found
  *       500:
- *         description: Internal server error
+ *         description: Internal Server Error
  */
 router.get("/:subject_id", subjectController.getSubjectById);
 
@@ -130,17 +133,17 @@ router.get("/:subject_id", subjectController.getSubjectById);
  *             $ref: '#/components/schemas/Subject'
  *     responses:
  *       200:
- *         description: Subject updated successfully
+ *         description: Subject Updated Successfully
  *       400:
- *         description: Bad request
+ *         description: Invalid Subject ID
  *       404:
- *         description: Subject not found
+ *         description: Subject Not Found
  *       409:
- *         description: Subject code already exists
+ *         description: Subject Code Already Exists
  *       500:
- *         description: Internal server error
+ *         description: Internal Server Error
  */
-router.put("/:subject_id", subjectController.updateSubject);
+router.put("/:subject_id", validateSubjectUpdate, subjectController.updateSubject);
 
 /**
  * @swagger
@@ -157,13 +160,13 @@ router.put("/:subject_id", subjectController.updateSubject);
  *           example: 101
  *     responses:
  *       200:
- *         description: Subject deleted successfully
+ *         description: Subject Deleted Successfully
  *       400:
- *         description: Invalid subject ID
+ *         description: Invalid Subject ID
  *       404:
- *         description: Subject not found
+ *         description: Subject Not Found
  *       500:
- *         description: Internal server error
+ *         description: Internal Server Error
  */
 router.delete("/:subject_id", subjectController.deleteSubject);
 

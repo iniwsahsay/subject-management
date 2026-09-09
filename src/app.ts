@@ -34,7 +34,7 @@ app.get("/health", (req: Request, res: Response) => {
 
 // Swagger documentation
 app.use(
-    "/Subject_Management_API",
+    "/Subject-Management-API",
     swaggerUi.serve,
     swaggerUi.setup(swaggerSpec)
 );

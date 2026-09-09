@@ -8,6 +8,8 @@ interface ISubject extends Document {
     credits: number;
     course_id: number;
     school_id: number;
+    semester: number;
+    department: string;
 }
 
 const subjectSchema = new Schema<ISubject>(
@@ -54,7 +56,22 @@ const subjectSchema = new Schema<ISubject>(
             type: Number,
             required: true,
             min: 1
+        },
+
+        semester: {
+            type: Number,
+            required: true,
+            min: 1,
+            max: 8
+        },
+
+        department: {
+            type: String,
+            required: true,
+            trim: true
         }
+
+
     },
     {
         timestamps: true
