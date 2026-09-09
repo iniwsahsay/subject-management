@@ -2,7 +2,7 @@
 
 A RESTful API for managing subjects using **Node.js, Express.js, TypeScript, and MongoDB**.
 
-The API provides complete CRUD operations for subjects along with request validation, custom error handling, structured logging, and Swagger API documentation.
+The API provides complete CRUD operations for subjects along with a custom `@Validator` decorator system for request validation, custom error handling, structured logging, and Swagger API documentation.
 
 ## Features
 
@@ -11,13 +11,16 @@ The API provides complete CRUD operations for subjects along with request valida
 * Get a subject by ID
 * Update a subject
 * Delete a subject
-* Request validation
+* Custom `@Validator` property decorator for declarative validation
+* DTO-based validation with `SubjectDto` and `UpdateSubjectDto`
+* Generic validation runner — automatically processes any decorated field
+* Validation middleware wired into routes before controllers
 * Custom exception handling
 * Winston logging
 * Morgan HTTP request logging
 * Swagger/OpenAPI documentation
 * MongoDB database integration
-* TypeScript support
+* TypeScript support with `experimentalDecorators`
 
 ## Tech Stack
 
@@ -44,9 +47,16 @@ subject-management/
 │   ├── controllers/
 │   │   └── subjectController.ts
 │   │
+│   ├── decorators/
+│   │   └── Validator.ts
+│   │
+│   ├── dto/
+│   │   └── SubjectDto.ts
+│   │
 │   ├── middleware/
 │   │   ├── errorHandler.ts
-│   │   └── notFound.ts
+│   │   ├── notFound.ts
+│   │   └── validationMiddleware.ts
 │   │
 │   ├── models/
 │   │   └── Subject.ts
@@ -59,10 +69,12 @@ subject-management/
 │   │
 │   ├── utils/
 │   │   ├── AppError.ts
-│   │   └── logger.ts
+│   │   ├── logger.ts
+│   │   └── response.ts
 │   │
 │   ├── validators/
-│   │   └── subjectValidator.ts
+│   │   ├── subjectValidator.ts
+│   │   └── validationRunner.ts
 │   │
 │   ├── app.ts
 │   └── server.ts
@@ -77,15 +89,17 @@ subject-management/
 
 ## Subject Attributes
 
-| Attribute      | Type   | Description                |
-| -------------- | ------ | -------------------------- |
-| `subject_id`   | Number | Unique subject identifier  |
-| `subject_name` | String | Name of the subject        |
-| `subject_code` | String | Unique subject code        |
-| `description`  | String | Description of the subject |
-| `credits`      | Number | Number of credits          |
-| `course_id`    | Number | Associated course ID       |
-| `school_id`    | Number | Associated school ID       |
+| Attribute      | Type   | Required | Constraints                  | Description                |
+| -------------- | ------ | -------- | ---------------------------- | -------------------------- |
+| `subject_id`   | Number | Yes      | min: 1                       | Unique subject identifier  |
+| `subject_name` | String | Yes      | minLength: 2, maxLength: 100 | Name of the subject        |
+| `subject_code` | String | Yes      | minLength: 2, maxLength: 20  | Unique subject code        |
+| `description`  | String | Yes      | maxLength: 500               | Description of the subject |
+| `credits`      | Number | Yes      | min: 1, max: 10              | Number of credits          |
+| `course_id`    | Number | Yes      | min: 1                       | Associated course ID       |
+| `school_id`    | Number | Yes      | min: 1                       | Associated school ID       |
+| `semester`     | Number | Yes      | min: 1, max: 8               | Semester number            |
+| `department`   | String | Yes      | minLength: 2, maxLength: 50  | Department name            |
 
 ## Prerequisites
 
@@ -178,7 +192,9 @@ Example request:
   "description": "Study of data structures, algorithms, and problem-solving techniques.",
   "credits": 4,
   "course_id": 10,
-  "school_id": 1
+  "school_id": 1,
+  "semester": 3,
+  "department": "Computer Science"
 }
 ```
 
@@ -212,16 +228,14 @@ Example:
 PUT /api/subjects/101
 ```
 
-Request body:
+Request body (all fields optional):
 
 ```json
 {
   "subject_name": "Advanced Data Structures and Algorithms",
-  "subject_code": "CS-DSA-101",
-  "description": "Advanced study of data structures and algorithms.",
   "credits": 5,
-  "course_id": 10,
-  "school_id": 1
+  "semester": 4,
+  "department": "Computer Science"
 }
 ```
 
@@ -237,12 +251,143 @@ Example:
 DELETE /api/subjects/101
 ```
 
+## Custom @Validator Decorator
+
+The project uses a custom TypeScript property decorator `@Validator` to define validation rules directly on DTO fields.
+
+### How it works
+
+`@Validator` stores validation rules in a metadata `Map` keyed by the class constructor at class-load time.
+
+```ts
+@Validator({
+    required: true,
+    type: "number",
+    min: 1,
+    max: 8
+})
+semester!: number;
+```
+
+The generic `validateObject` runner in `src/validators/validationRunner.ts` reads the metadata and validates every decorated field automatically — no field-specific `if` statements needed anywhere.
+
+### Supported validation options
+
+| Option      | Type                              | Description                        |
+| ----------- | --------------------------------- | ---------------------------------- |
+| `required`  | boolean                           | Field must be present and non-empty |
+| `type`      | `"string"` \| `"number"` \| `"boolean"` | Expected JavaScript type     |
+| `min`       | number                            | Minimum value (for numbers)        |
+| `max`       | number                            | Maximum value (for numbers)        |
+| `minLength` | number                            | Minimum length (for strings)       |
+| `maxLength` | number                            | Maximum length (for strings)       |
+
+### DTOs
+
+`SubjectDto` — used for create (all fields required):
+
+```ts
+export class SubjectDto {
+
+    @Validator({ required: true, type: "number", min: 1 })
+    subject_id!: number;
+
+    @Validator({ required: true, type: "string", minLength: 2, maxLength: 100 })
+    subject_name!: string;
+
+    @Validator({ required: true, type: "string", minLength: 2, maxLength: 20 })
+    subject_code!: string;
+
+    @Validator({ required: true, type: "string", maxLength: 500 })
+    description!: string;
+
+    @Validator({ required: true, type: "number", min: 1, max: 10 })
+    credits!: number;
+
+    @Validator({ required: true, type: "number", min: 1 })
+    course_id!: number;
+
+    @Validator({ required: true, type: "number", min: 1 })
+    school_id!: number;
+
+    @Validator({ required: true, type: "number", min: 1, max: 8 })
+    semester!: number;
+
+    @Validator({ required: true, type: "string", minLength: 2, maxLength: 50 })
+    department!: string;
+}
+```
+
+`UpdateSubjectDto` — used for update (all fields optional):
+
+```ts
+export class UpdateSubjectDto {
+
+    @Validator({ required: false, type: "string", minLength: 2, maxLength: 100 })
+    subject_name?: string;
+
+    @Validator({ required: false, type: "string", minLength: 2, maxLength: 20 })
+    subject_code?: string;
+
+    @Validator({ required: false, type: "string", maxLength: 500 })
+    description?: string;
+
+    @Validator({ required: false, type: "number", min: 1, max: 10 })
+    credits?: number;
+
+    @Validator({ required: false, type: "number", min: 1 })
+    course_id?: number;
+
+    @Validator({ required: false, type: "number", min: 1 })
+    school_id?: number;
+
+    @Validator({ required: false, type: "number", min: 1, max: 8 })
+    semester?: number;
+
+    @Validator({ required: false, type: "string", minLength: 2, maxLength: 50 })
+    department?: string;
+}
+```
+
+### Adding a new attribute
+
+To add a new field to the subject, only **4 files** need to be updated:
+
+| File | What to add |
+| ---- | ----------- |
+| `src/dto/SubjectDto.ts` | `@Validator` in both `SubjectDto` and `UpdateSubjectDto` |
+| `src/models/Subject.ts` | Field in interface and schema |
+| `src/services/subjectService.ts` | Field in both interfaces, destructuring, and `Subject.create()` |
+| `src/controllers/subjectController.ts` | Field in both request body interfaces |
+
+No changes needed to routes, middleware, or the validation runner.
+
+Example — adding `semester`:
+
+```ts
+// src/dto/SubjectDto.ts
+@Validator({ required: true, type: "number", min: 1, max: 8 })
+semester!: number;
+```
+
+```ts
+// src/models/Subject.ts
+semester: { type: Number, required: true, min: 1, max: 8 }
+```
+
+Then rebuild:
+
+```bash
+npm run build
+npm start
+```
+
 ## Swagger Documentation
 
 Interactive API documentation is available through Swagger UI:
 
 ```text
-http://localhost:3000/Subject_Management_API
+http://localhost:3000/Subject-Management-API
 ```
 
 Swagger allows you to view and test all available API endpoints directly from the browser.
@@ -264,26 +409,60 @@ Example response:
 }
 ```
 
+## Response Format
+
+### Success
+
+```json
+{
+  "status": "true",
+  "message": "success",
+  "data": {}
+}
+```
+
+### Failure
+
+```json
+{
+  "status": "fail..!",
+  "message": "",
+  "error": ""
+}
+```
+
+### Validation failure
+
+```json
+{
+  "status": "fail..!",
+  "message": "Validation failed",
+  "error": [
+    {
+      "field": "credits",
+      "message": "credits must be at least 1"
+    }
+  ]
+}
+```
+
 ## Error Handling
 
 The API uses custom error classes for common application errors:
 
-* `400 Bad Request`
-* `404 Not Found`
-* `409 Conflict`
-* `500 Internal Server Error`
+* `400 Bad Request` — invalid input or validation failure
+* `404 Not Found` — subject not found
+* `409 Conflict` — subject ID or code already exists
+* `500 Internal Server Error` — unexpected error
 
-Example error response:
+Custom error classes in `src/utils/AppError.ts`:
 
-```json
-{
-  "success": false,
-  "error": {
-    "code": "NOT_FOUND",
-    "message": "Subject not found"
-  }
-}
-```
+* `AppError` — base class
+* `BadRequestError` — 400
+* `NotFoundError` — 404
+* `SubjectNotFoundError` — 404 (subject-specific)
+* `ConflictError` — 409
+* `SubjectAlreadyExistsError` — 409 (subject-specific)
 
 ## Logging
 
@@ -300,21 +479,30 @@ The `logs/` directory is excluded from Git using `.gitignore`.
 
 ## Validation
 
-The API validates incoming subject data before processing requests.
+Validation is handled by the `@Validator` decorator system before the request reaches the controller.
 
-Examples of validation rules:
+Route flow:
 
-* `subject_id` must be a positive integer
-* `subject_name` must be a non-empty string
-* `subject_code` must be a non-empty string
-* `description` must be a non-empty string
-* `credits` must be a positive integer
-* `course_id` must be a positive integer
-* `school_id` must be a positive integer
+```text
+POST /api/subjects  →  validateSubject middleware  →  subjectController.createSubject
+PUT  /api/subjects/:id  →  validateSubjectUpdate middleware  →  subjectController.updateSubject
+```
+
+Validation rules per field:
+
+* `subject_id` — required, number, min: 1
+* `subject_name` — required, string, minLength: 2, maxLength: 100
+* `subject_code` — required, string, minLength: 2, maxLength: 20
+* `description` — required, string, maxLength: 500
+* `credits` — required, number, min: 1, max: 10
+* `course_id` — required, number, min: 1
+* `school_id` — required, number, min: 1
+* `semester` — required, number, min: 1, max: 8
+* `department` — required, string, minLength: 2, maxLength: 50
 
 ## TypeScript
 
-The project is written in TypeScript.
+The project is written in TypeScript with `experimentalDecorators` enabled to support the custom `@Validator` decorator.
 
 TypeScript configuration is maintained in:
 
@@ -341,7 +529,7 @@ The `dist/` directory is excluded from Git because it is generated during the bu
 The API can be tested using:
 
 * Postman
-* Swagger UI
+* Swagger UI at `http://localhost:3000/Subject-Management-API`
 
 Example CRUD flow:
 
@@ -355,17 +543,7 @@ DELETE  /api/subjects/:subject_id
 
 ## Git Branch
 
-The TypeScript migration was implemented on:
-
-```text
-add-subject-id
-```
-
-and merged into:
-
-```text
-main
-```
+The custom `@Validator` decorator system was implemented on `main`.
 
 ## Author
 
