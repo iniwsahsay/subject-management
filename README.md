@@ -8,6 +8,7 @@ The API provides complete CRUD operations for subjects along with a custom `@Val
 
 * Create a subject
 * Get all subjects
+* Get all subjects with pagination
 * Get all subjects with optional search/filter across all fields
 * Get a subject by ID
 * Update a subject
@@ -211,7 +212,66 @@ Example request:
 GET /api/subjects
 ```
 
-Returns all subjects sorted by creation date (newest first).
+Returns subjects sorted by creation date (newest first), paginated. Defaults to page 1 with 10 subjects per page.
+
+### Pagination
+
+```http
+GET /api/subjects?page=<number>&limit=<number>
+```
+
+| Parameter | Type    | Default | Description                        |
+| --------- | ------- | ------- | ---------------------------------- |
+| `page`    | integer | 1       | Page number (must be ≥ 1)          |
+| `limit`   | integer | 10      | Number of subjects per page (≥ 1)  |
+
+Examples:
+
+```http
+GET /api/subjects
+GET /api/subjects?page=1&limit=10
+GET /api/subjects?page=2&limit=5
+GET /api/subjects?page=3&limit=20
+```
+
+Pagination response:
+
+```json
+{
+  "status": "true",
+  "message": "Subjects fetched successfully",
+  "data": {
+    "subjects": [],
+    "pagination": {
+      "page": 1,
+      "limit": 10,
+      "totalItems": 25,
+      "totalPages": 3
+    }
+  }
+}
+```
+
+Pagination behavior:
+- `skip` is calculated as `(page - 1) * limit`
+- `totalPages` is calculated as `Math.ceil(totalItems / limit)`
+- Requesting a page beyond available data returns an empty `subjects` array with a `200` status — it is not treated as an error
+- Invalid `page` or `limit` values (zero, negative, or non-numeric) return a `400` validation error
+
+Invalid pagination response:
+
+```json
+{
+  "status": "fail..!",
+  "message": "Validation failed",
+  "error": [
+    {
+      "field": "page",
+      "message": "page must be a positive integer"
+    }
+  ]
+}
+```
 
 ### Search Subjects
 
@@ -592,6 +652,8 @@ Example CRUD flow:
 ```text
 POST    /api/subjects
 GET     /api/subjects
+GET     /api/subjects?page=1&limit=10
+GET     /api/subjects?page=2&limit=5
 GET     /api/subjects?search=Mathematics
 GET     /api/subjects/:subject_id
 PUT     /api/subjects/:subject_id
@@ -600,7 +662,7 @@ DELETE  /api/subjects/:subject_id
 
 ## Git Branch
 
-The custom `@Validator` decorator system, `email`/`password` fields, search functionality, and Swagger schema updates were all implemented on `main`.
+The custom `@Validator` decorator system, `email`/`password` fields, search functionality, pagination, and Swagger schema updates were all implemented on `main`.
 
 ## Author
 
