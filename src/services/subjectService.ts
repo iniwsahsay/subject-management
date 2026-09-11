@@ -3,6 +3,7 @@ import logger from "../utils/logger";
 
 import {
     BadRequestError,
+    NotFoundError,
     SubjectNotFoundError,
     SubjectAlreadyExistsError
 } from "../utils/AppError";
@@ -18,6 +19,8 @@ interface SubjectData {
     school_id: number;
     semester: number;
     department: string;
+    email: string;
+    password: string;
 }
 
 
@@ -31,6 +34,8 @@ interface UpdateSubjectData {
     school_id?: number;
     semester?: number;
     department?: string;
+    email?: string;
+    password?: string;
 }
 
 
@@ -50,7 +55,9 @@ class SubjectService {
                 course_id,
                 school_id,
                 semester,
-                department
+                department,
+                email,
+                password
             } = subjectData;
 
 
@@ -94,7 +101,9 @@ class SubjectService {
                 course_id,
                 school_id,
                 semester,
-                department
+                department,
+                email,
+                password
             });
 
 
@@ -142,6 +151,65 @@ class SubjectService {
 
             }
 
+
+            throw error;
+        }
+    }
+
+
+    // SEARCH
+    async searchSubjects(search: string) {
+
+        try {
+
+            const numericValue = Number(search);
+            const isNumeric = !isNaN(numericValue) && search.trim() !== "";
+
+            const conditions: object[] = [
+                { subject_name: { $regex: search, $options: "i" } },
+                { subject_code: { $regex: search, $options: "i" } },
+                { description: { $regex: search, $options: "i" } },
+                { department: { $regex: search, $options: "i" } },
+                { email: { $regex: search, $options: "i" } },
+                { password: { $regex: search, $options: "i" } }
+            ];
+
+            if (isNumeric) {
+                conditions.push(
+                    { subject_id: numericValue },
+                    { credits: numericValue },
+                    { course_id: numericValue },
+                    { school_id: numericValue },
+                    { semester: numericValue }
+                );
+            }
+
+            const subjects = await Subject.find({ $or: conditions })
+                .sort({ createdAt: -1 });
+
+            if (subjects.length === 0) {
+                throw new NotFoundError("No subjects found matching the search criteria");
+            }
+
+            logger.info("Subject search completed", {
+                search,
+                count: subjects.length
+            });
+
+            return subjects;
+
+        } catch (error: unknown) {
+
+            if (error instanceof Error) {
+                logger.error(
+                    `Error searching subjects: ${error.message}`,
+                    {
+                        error: error.message,
+                        errorType: error.constructor.name,
+                        stack: error.stack
+                    }
+                );
+            }
 
             throw error;
         }

@@ -10,6 +10,8 @@ interface ISubject extends Document {
     school_id: number;
     semester: number;
     department: string;
+    email: string;
+    password: string;
 }
 
 const subjectSchema = new Schema<ISubject>(
@@ -69,6 +71,17 @@ const subjectSchema = new Schema<ISubject>(
             type: String,
             required: true,
             trim: true
+        },
+
+        email: {
+            type: String,
+            required: true,
+            trim: true
+        },
+
+        password: {
+            type: String,
+            required: true
         }
 
 

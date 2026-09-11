@@ -5,6 +5,9 @@ export interface ValidatorOptions {
     max?: number;
     minLength?: number;
     maxLength?: number;
+    email?: boolean;
+    pattern?: RegExp;
+    patternMessage?: string;
 }
 
 export interface ValidationRule {

@@ -13,6 +13,8 @@ interface SubjectRequestBody {
     school_id: number;
     semester: number;
     department: string;
+    email: string;
+    password: string;
 }
 
 interface UpdateSubjectRequestBody {
@@ -25,6 +27,8 @@ interface UpdateSubjectRequestBody {
     school_id?: number;
     semester?: number;
     department?: string;
+    email?: string;
+    password?: string;
 }
 
 class SubjectController {
@@ -57,13 +61,26 @@ class SubjectController {
         next: NextFunction
     ): Promise<void> {
         try {
-            logger.info("Get all subjects request received");
+            const search = req.query.search as string | undefined;
 
-            const subjects = await subjectService.getAllSubjects();
+            if (search && search.trim() !== "") {
+                logger.info("Search subjects request received", { search });
 
-            res.status(200).json(
-                successResponse("success", subjects)
-            );
+                const subjects = await subjectService.searchSubjects(search.trim());
+
+                res.status(200).json(
+                    successResponse("success", subjects)
+                );
+
+            } else {
+                logger.info("Get all subjects request received");
+
+                const subjects = await subjectService.getAllSubjects();
+
+                res.status(200).json(
+                    successResponse("success", subjects)
+                );
+            }
 
         } catch (error: unknown) {
             next(error);

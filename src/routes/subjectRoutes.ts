@@ -21,6 +21,10 @@ const router = express.Router();
  *         - credits
  *         - course_id
  *         - school_id
+ *         - semester
+ *         - department
+ *         - email
+ *         - password
  *       properties:
  *         _id:
  *           type: string
@@ -47,6 +51,51 @@ const router = express.Router();
  *         school_id:
  *           type: integer
  *           example: 1
+ *         semester:
+ *           type: integer
+ *           example: 3
+ *         department:
+ *           type: string
+ *           example: Computer Science
+ *         email:
+ *           type: string
+ *           example: student@gmail.com
+ *         password:
+ *           type: string
+ *           example: secret123
+ *     UpdateSubject:
+ *       type: object
+ *       properties:
+ *         subject_name:
+ *           type: string
+ *           example: Mathematics
+ *         subject_code:
+ *           type: string
+ *           example: MATH101
+ *         description:
+ *           type: string
+ *           example: Introduction to Mathematics
+ *         credits:
+ *           type: integer
+ *           example: 4
+ *         course_id:
+ *           type: integer
+ *           example: 10
+ *         school_id:
+ *           type: integer
+ *           example: 1
+ *         semester:
+ *           type: integer
+ *           example: 3
+ *         department:
+ *           type: string
+ *           example: Computer Science
+ *         email:
+ *           type: string
+ *           example: student@gmail.com
+ *         password:
+ *           type: string
+ *           example: secret123
  */
 
 /**
@@ -77,11 +126,21 @@ router.post("/", validateSubject, subjectController.createSubject);
  * @swagger
  * /api/subjects:
  *   get:
- *     summary: Get all subjects
+ *     summary: Get all subjects or search by any field
  *     tags: [Subjects]
+ *     parameters:
+ *       - in: query
+ *         name: search
+ *         required: false
+ *         schema:
+ *           type: string
+ *           example: Mathematics
+ *         description: "Search across all fields — type any value: a name (Mathematics), code (CS-DS-101), email (student@gmail.com), or a number (101, 4)"
  *     responses:
  *       200:
  *         description: Subjects Retrieved Successfully
+ *       404:
+ *         description: No Subjects Found
  *       500:
  *         description: Internal Server Error
  */
@@ -130,7 +189,7 @@ router.get("/:subject_id", subjectController.getSubjectById);
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/Subject'
+ *             $ref: '#/components/schemas/UpdateSubject'
  *     responses:
  *       200:
  *         description: Subject Updated Successfully

@@ -28,28 +28,23 @@ export function validateObject(
         const value = object[propertyKey];
 
         // Required validation
-        if (
-            options.required &&
-            (
-                value === undefined ||
-                value === null ||
-                value === ""
-            )
-        ) {
+        const isEmpty =
+            value === undefined ||
+            value === null ||
+            value === "" ||
+            (typeof value === "string" && value.trim() === "");
+
+        if (options.required && isEmpty) {
             errors.push({
                 field: propertyKey,
-                message: `${propertyKey} is required`
+                message: `${propertyKey} is empty — please provide a value for ${propertyKey}`
             });
 
             continue;
         }
 
         // Don't validate optional missing values
-        if (
-            value === undefined ||
-            value === null ||
-            value === ""
-        ) {
+        if (isEmpty) {
             continue;
         }
 
@@ -59,7 +54,7 @@ export function validateObject(
             if (typeof value !== "string") {
                 errors.push({
                     field: propertyKey,
-                    message: `${propertyKey} must be a string`
+                    message: `${propertyKey} must be a string but received ${typeof value} (${JSON.stringify(value)})`
                 });
 
                 continue;
@@ -68,13 +63,19 @@ export function validateObject(
 
         if (options.type === "number") {
 
-            if (
-                typeof value !== "number" ||
-                Number.isNaN(value)
-            ) {
+            if (typeof value !== "number" || Number.isNaN(value)) {
                 errors.push({
                     field: propertyKey,
-                    message: `${propertyKey} must be a number`
+                    message: `${propertyKey} must be a number but received ${typeof value} (${JSON.stringify(value)})`
+                });
+
+                continue;
+            }
+
+            if (!Number.isInteger(value)) {
+                errors.push({
+                    field: propertyKey,
+                    message: `${propertyKey} must be an integer but received decimal (${value})`
                 });
 
                 continue;
@@ -86,7 +87,7 @@ export function validateObject(
             if (typeof value !== "boolean") {
                 errors.push({
                     field: propertyKey,
-                    message: `${propertyKey} must be a boolean`
+                    message: `${propertyKey} must be a boolean but received ${typeof value} (${JSON.stringify(value)})`
                 });
 
                 continue;
@@ -141,6 +142,28 @@ export function validateObject(
                 message:
                     `${propertyKey} cannot exceed ${options.maxLength} characters`
             });
+        }
+
+        // Email format validation
+        if (options.email && typeof value === "string") {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(value)) {
+                errors.push({
+                    field: propertyKey,
+                    message: `${propertyKey} must be a valid email address`
+                });
+            }
+        }
+
+        // Pattern validation (e.g. strong password)
+        if (options.pattern && typeof value === "string") {
+            if (!options.pattern.test(value)) {
+                errors.push({
+                    field: propertyKey,
+                    message: options.patternMessage ??
+                        `${propertyKey} does not match the required format`
+                });
+            }
         }
     }
 
