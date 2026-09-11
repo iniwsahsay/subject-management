@@ -126,7 +126,7 @@ router.post("/", validateSubject, subjectController.createSubject);
  * @swagger
  * /api/subjects:
  *   get:
- *     summary: Get all subjects or search by any field
+ *     summary: Get all subjects with pagination, or search by any field
  *     tags: [Subjects]
  *     parameters:
  *       - in: query
@@ -136,9 +136,60 @@ router.post("/", validateSubject, subjectController.createSubject);
  *           type: string
  *           example: Mathematics
  *         description: "Search across all fields — type any value: a name (Mathematics), code (CS-DS-101), email (student@gmail.com), or a number (101, 4)"
+ *       - in: query
+ *         name: page
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *           example: 1
+ *         description: "Page number (default: 1). Must be a positive integer."
+ *       - in: query
+ *         name: limit
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *           example: 10
+ *         description: "Number of subjects per page (default: 10). Must be a positive integer."
  *     responses:
  *       200:
- *         description: Subjects Retrieved Successfully
+ *         description: Subjects fetched successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "true"
+ *                 message:
+ *                   type: string
+ *                   example: Subjects fetched successfully
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     subjects:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/Subject'
+ *                     pagination:
+ *                       type: object
+ *                       properties:
+ *                         page:
+ *                           type: integer
+ *                           example: 1
+ *                         limit:
+ *                           type: integer
+ *                           example: 10
+ *                         totalItems:
+ *                           type: integer
+ *                           example: 25
+ *                         totalPages:
+ *                           type: integer
+ *                           example: 3
+ *       400:
+ *         description: Invalid page or limit value
  *       404:
  *         description: No Subjects Found
  *       500:

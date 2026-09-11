@@ -54,7 +54,7 @@ class SubjectController {
     }
 
 
-    // GET ALL SUBJECTS
+    // GET ALL SUBJECTS (paginated)
     async getAllSubjects(
         req: Request,
         res: Response,
@@ -72,15 +72,44 @@ class SubjectController {
                     successResponse("success", subjects)
                 );
 
-            } else {
-                logger.info("Get all subjects request received");
-
-                const subjects = await subjectService.getAllSubjects();
-
-                res.status(200).json(
-                    successResponse("success", subjects)
-                );
+                return;
             }
+
+            // Parse pagination params with defaults
+            const rawPage  = req.query.page  as string | undefined;
+            const rawLimit = req.query.limit as string | undefined;
+
+            const page  = rawPage  ? Number(rawPage)  : 1;
+            const limit = rawLimit ? Number(rawLimit) : 10;
+
+            // Validate: must be positive integers
+            if (!Number.isInteger(page) || page < 1) {
+                res.status(400).json({
+                    status: "fail..!",
+                    message: "Validation failed",
+                    error: [{ field: "page", message: "page must be a positive integer" }]
+                });
+                return;
+            }
+
+            if (!Number.isInteger(limit) || limit < 1) {
+                res.status(400).json({
+                    status: "fail..!",
+                    message: "Validation failed",
+                    error: [{ field: "limit", message: "limit must be a positive integer" }]
+                });
+                return;
+            }
+
+            const skip = (page - 1) * limit;
+
+            logger.info("Get all subjects request received", { page, limit, skip });
+
+            const result = await subjectService.getAllSubjects(page, limit, skip);
+
+            res.status(200).json(
+                successResponse("Subjects fetched successfully", result)
+            );
 
         } catch (error: unknown) {
             next(error);

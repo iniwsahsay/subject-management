@@ -216,21 +216,37 @@ class SubjectService {
     }
 
 
-    // READ ALL
-    async getAllSubjects() {
+    // READ ALL (paginated)
+    async getAllSubjects(page: number, limit: number, skip: number) {
 
         try {
 
-            const subjects = await Subject.find()
-                .sort({ createdAt: -1 });
+            const [subjects, totalItems] = await Promise.all([
+                Subject.find()
+                    .sort({ createdAt: -1 })
+                    .skip(skip)
+                    .limit(limit),
+                Subject.countDocuments()
+            ]);
 
+            const totalPages = Math.ceil(totalItems / limit);
 
             logger.info("All subjects retrieved successfully", {
-                count: subjects.length
+                page,
+                limit,
+                totalItems,
+                totalPages
             });
 
-
-            return subjects;
+            return {
+                subjects,
+                pagination: {
+                    page,
+                    limit,
+                    totalItems,
+                    totalPages
+                }
+            };
 
         } catch (error: unknown) {
 
@@ -246,7 +262,6 @@ class SubjectService {
                 );
 
             }
-
 
             throw error;
         }

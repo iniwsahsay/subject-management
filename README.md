@@ -8,13 +8,16 @@ The API provides complete CRUD operations for subjects along with a custom `@Val
 
 * Create a subject
 * Get all subjects
+* Get all subjects with optional search/filter across all fields
 * Get a subject by ID
 * Update a subject
 * Delete a subject
 * Custom `@Validator` property decorator for declarative validation
+* Supported validator options: `required`, `type`, `min`, `max`, `minLength`, `maxLength`, `email`, `pattern`, `patternMessage`
 * DTO-based validation with `SubjectDto` and `UpdateSubjectDto`
 * Generic validation runner — automatically processes any decorated field
 * Validation middleware wired into routes before controllers
+* Custom JSON body sanitizer — handles malformed values gracefully
 * Custom exception handling
 * Winston logging
 * Morgan HTTP request logging
@@ -89,17 +92,19 @@ subject-management/
 
 ## Subject Attributes
 
-| Attribute      | Type   | Required | Constraints                  | Description                |
-| -------------- | ------ | -------- | ---------------------------- | -------------------------- |
-| `subject_id`   | Number | Yes      | min: 1                       | Unique subject identifier  |
-| `subject_name` | String | Yes      | minLength: 2, maxLength: 100 | Name of the subject        |
-| `subject_code` | String | Yes      | minLength: 2, maxLength: 20  | Unique subject code        |
-| `description`  | String | Yes      | maxLength: 500               | Description of the subject |
-| `credits`      | Number | Yes      | min: 1, max: 10              | Number of credits          |
-| `course_id`    | Number | Yes      | min: 1                       | Associated course ID       |
-| `school_id`    | Number | Yes      | min: 1                       | Associated school ID       |
-| `semester`     | Number | Yes      | min: 1, max: 8               | Semester number            |
-| `department`   | String | Yes      | minLength: 2, maxLength: 50  | Department name            |
+| Attribute      | Type   | Required | Constraints                                                                 | Description                |
+| -------------- | ------ | -------- | --------------------------------------------------------------------------- | -------------------------- |
+| `subject_id`   | Number | Yes      | min: 1                                                                      | Unique subject identifier  |
+| `subject_name` | String | Yes      | minLength: 2, maxLength: 100                                                | Name of the subject        |
+| `subject_code` | String | Yes      | minLength: 2, maxLength: 20                                                 | Unique subject code        |
+| `description`  | String | Yes      | minLength: 10, maxLength: 500                                               | Description of the subject |
+| `credits`      | Number | Yes      | min: 1, max: 10                                                             | Number of credits          |
+| `course_id`    | Number | Yes      | min: 1                                                                      | Associated course ID       |
+| `school_id`    | Number | Yes      | min: 1                                                                      | Associated school ID       |
+| `semester`     | Number | Yes      | min: 1, max: 8                                                              | Semester number            |
+| `department`   | String | Yes      | minLength: 2, maxLength: 50                                                 | Department name            |
+| `email`        | String | Yes      | valid email format                                                          | Contact email address      |
+| `password`     | String | Yes      | min 8 chars, uppercase, lowercase, number, special character (@#$%!)       | Account password           |
 
 ## Prerequisites
 
@@ -194,7 +199,9 @@ Example request:
   "course_id": 10,
   "school_id": 1,
   "semester": 3,
-  "department": "Computer Science"
+  "department": "Computer Science",
+  "email": "student@gmail.com",
+  "password": "Secret@123"
 }
 ```
 
@@ -203,6 +210,33 @@ Example request:
 ```http
 GET /api/subjects
 ```
+
+Returns all subjects sorted by creation date (newest first).
+
+### Search Subjects
+
+```http
+GET /api/subjects?search=<value>
+```
+
+Uses the existing GET all subjects endpoint with an optional `search` query parameter. Searches across all 11 subject fields simultaneously.
+
+If `search` is not provided, all subjects are returned as usual.
+
+Examples:
+
+```http
+GET /api/subjects?search=Mathematics
+GET /api/subjects?search=CS-DSA-101
+GET /api/subjects?search=Computer
+GET /api/subjects?search=student@gmail.com
+GET /api/subjects?search=101
+GET /api/subjects?search=4
+```
+
+Search behavior:
+- String fields (`subject_name`, `subject_code`, `description`, `department`, `email`, `password`) — case-insensitive partial match
+- Numeric fields (`subject_id`, `credits`, `course_id`, `school_id`, `semester`) — exact match when the search value is a valid number
 
 ### Get Subject by ID
 
@@ -235,7 +269,9 @@ Request body (all fields optional):
   "subject_name": "Advanced Data Structures and Algorithms",
   "credits": 5,
   "semester": 4,
-  "department": "Computer Science"
+  "department": "Computer Science",
+  "email": "updated@gmail.com",
+  "password": "NewPass@123"
 }
 ```
 
@@ -273,14 +309,17 @@ The generic `validateObject` runner in `src/validators/validationRunner.ts` read
 
 ### Supported validation options
 
-| Option      | Type                              | Description                        |
-| ----------- | --------------------------------- | ---------------------------------- |
-| `required`  | boolean                           | Field must be present and non-empty |
-| `type`      | `"string"` \| `"number"` \| `"boolean"` | Expected JavaScript type     |
-| `min`       | number                            | Minimum value (for numbers)        |
-| `max`       | number                            | Maximum value (for numbers)        |
-| `minLength` | number                            | Minimum length (for strings)       |
-| `maxLength` | number                            | Maximum length (for strings)       |
+| Option           | Type                                    | Description                                              |
+| ---------------- | --------------------------------------- | -------------------------------------------------------- |
+| `required`       | boolean                                 | Field must be present and non-empty                      |
+| `type`           | `"string"` \| `"number"` \| `"boolean"` | Expected JavaScript type                                 |
+| `min`            | number                                  | Minimum value (for numbers)                              |
+| `max`            | number                                  | Maximum value (for numbers)                              |
+| `minLength`      | number                                  | Minimum length (for strings)                             |
+| `maxLength`      | number                                  | Maximum length (for strings)                             |
+| `email`          | boolean                                 | Validates email format using regex                       |
+| `pattern`        | RegExp                                  | Custom regex pattern the value must match                |
+| `patternMessage` | string                                  | Custom error message shown when `pattern` validation fails |
 
 ### DTOs
 
@@ -298,7 +337,7 @@ export class SubjectDto {
     @Validator({ required: true, type: "string", minLength: 2, maxLength: 20 })
     subject_code!: string;
 
-    @Validator({ required: true, type: "string", maxLength: 500 })
+    @Validator({ required: true, type: "string", minLength: 10, maxLength: 500 })
     description!: string;
 
     @Validator({ required: true, type: "number", min: 1, max: 10 })
@@ -315,6 +354,17 @@ export class SubjectDto {
 
     @Validator({ required: true, type: "string", minLength: 2, maxLength: 50 })
     department!: string;
+
+    @Validator({ required: true, type: "string", email: true })
+    email!: string;
+
+    @Validator({
+        required: true,
+        type: "string",
+        pattern: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@#$%!])[A-Za-z\d@#$%!]{8,}$/,
+        patternMessage: "password must contain at least 8 characters, one uppercase letter, one lowercase letter, one number, and one special character"
+    })
+    password!: string;
 }
 ```
 
@@ -346,6 +396,17 @@ export class UpdateSubjectDto {
 
     @Validator({ required: false, type: "string", minLength: 2, maxLength: 50 })
     department?: string;
+
+    @Validator({ required: false, type: "string", email: true })
+    email?: string;
+
+    @Validator({
+        required: false,
+        type: "string",
+        pattern: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@#$%!])[A-Za-z\d@#$%!]{8,}$/,
+        patternMessage: "password must contain at least 8 characters, one uppercase letter, one lowercase letter, one number, and one special character"
+    })
+    password?: string;
 }
 ```
 
@@ -361,19 +422,6 @@ To add a new field to the subject, only **4 files** need to be updated:
 | `src/controllers/subjectController.ts` | Field in both request body interfaces |
 
 No changes needed to routes, middleware, or the validation runner.
-
-Example — adding `semester`:
-
-```ts
-// src/dto/SubjectDto.ts
-@Validator({ required: true, type: "number", min: 1, max: 8 })
-semester!: number;
-```
-
-```ts
-// src/models/Subject.ts
-semester: { type: Number, required: true, min: 1, max: 8 }
-```
 
 Then rebuild:
 
@@ -391,6 +439,10 @@ http://localhost:3000/Subject-Management-API
 ```
 
 Swagger allows you to view and test all available API endpoints directly from the browser.
+
+The Swagger schema includes two separate schemas:
+- `Subject` — used for POST, contains all 11 required fields
+- `UpdateSubject` — used for PUT, contains all updatable fields (all optional, no `subject_id`)
 
 ## Health Check
 
@@ -464,6 +516,8 @@ Custom error classes in `src/utils/AppError.ts`:
 * `ConflictError` — 409
 * `SubjectAlreadyExistsError` — 409 (subject-specific)
 
+The application also includes a custom JSON body sanitizer in `src/app.ts` that handles malformed request bodies gracefully — for example, missing values (`"key": ,`) or unquoted string values — and returns a descriptive `400` validation error instead of crashing.
+
 ## Logging
 
 The application uses **Winston** for structured logging and **Morgan** for HTTP request logging.
@@ -493,12 +547,14 @@ Validation rules per field:
 * `subject_id` — required, number, min: 1
 * `subject_name` — required, string, minLength: 2, maxLength: 100
 * `subject_code` — required, string, minLength: 2, maxLength: 20
-* `description` — required, string, maxLength: 500
+* `description` — required, string, minLength: 10, maxLength: 500
 * `credits` — required, number, min: 1, max: 10
 * `course_id` — required, number, min: 1
 * `school_id` — required, number, min: 1
 * `semester` — required, number, min: 1, max: 8
 * `department` — required, string, minLength: 2, maxLength: 50
+* `email` — required, string, valid email format
+* `password` — required, string, min 8 characters, must include uppercase, lowercase, number, and special character (`@#$%!`)
 
 ## TypeScript
 
@@ -536,6 +592,7 @@ Example CRUD flow:
 ```text
 POST    /api/subjects
 GET     /api/subjects
+GET     /api/subjects?search=Mathematics
 GET     /api/subjects/:subject_id
 PUT     /api/subjects/:subject_id
 DELETE  /api/subjects/:subject_id
@@ -543,7 +600,7 @@ DELETE  /api/subjects/:subject_id
 
 ## Git Branch
 
-The custom `@Validator` decorator system was implemented on `main`.
+The custom `@Validator` decorator system, `email`/`password` fields, search functionality, and Swagger schema updates were all implemented on `main`.
 
 ## Author
 
