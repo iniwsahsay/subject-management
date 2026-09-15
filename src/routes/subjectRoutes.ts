@@ -14,7 +14,6 @@ const router = express.Router();
  *     Subject:
  *       type: object
  *       required:
- *         - subject_id
  *         - subject_name
  *         - subject_code
  *         - description
@@ -31,8 +30,9 @@ const router = express.Router();
  *           readOnly: true
  *           example: 68c123abc456789def012345
  *         subject_id:
- *           type: integer
- *           example: 101
+ *           type: string
+ *           readOnly: true
+ *           example: 550e8400-e29b-41d4-a716-446655440000
  *         subject_name:
  *           type: string
  *           example: Mathematics
@@ -126,16 +126,35 @@ router.post("/", validateSubject, subjectController.createSubject);
  * @swagger
  * /api/subjects:
  *   get:
- *     summary: Get all subjects with pagination, or search by any field
+ *     summary: Get all subjects (paginated) or filter by a specific field
  *     tags: [Subjects]
  *     parameters:
  *       - in: query
- *         name: search
+ *         name: field
  *         required: false
  *         schema:
  *           type: string
- *           example: Mathematics
- *         description: "Search across all fields — type any value: a name (Mathematics), code (CS-DS-101), email (student@gmail.com), or a number (101, 4)"
+ *           enum:
+ *             - subject_id
+ *             - subject_name
+ *             - subject_code
+ *             - description
+ *             - credits
+ *             - course_id
+ *             - school_id
+ *             - semester
+ *             - department
+ *             - email
+ *             - password
+ *           example: subject_name
+ *         description: "Subject attribute to filter by. Note: subject_id expects a UUID string value."
+ *       - in: query
+ *         name: value
+ *         required: false
+ *         schema:
+ *           type: string
+ *           example: math
+ *         description: "Value to search for — must match the datatype of the selected field."
  *       - in: query
  *         name: page
  *         required: false
@@ -189,9 +208,9 @@ router.post("/", validateSubject, subjectController.createSubject);
  *                           type: integer
  *                           example: 3
  *       400:
- *         description: Invalid page or limit value
+ *         description: "Invalid field name, missing/empty value, wrong datatype (e.g. text for a numeric field or number for a string field), or invalid pagination"
  *       404:
- *         description: No Subjects Found
+ *         description: No subjects found matching the filter
  *       500:
  *         description: Internal Server Error
  */
@@ -208,13 +227,11 @@ router.get("/", subjectController.getAllSubjects);
  *         name: subject_id
  *         required: true
  *         schema:
- *           type: integer
- *           example: 101
+ *           type: string
+ *           example: 550e8400-e29b-41d4-a716-446655440000
  *     responses:
  *       200:
  *         description: Subject Found
- *       400:
- *         description: Invalid Subject ID
  *       404:
  *         description: Subject Not Found
  *       500:
@@ -233,8 +250,8 @@ router.get("/:subject_id", subjectController.getSubjectById);
  *         name: subject_id
  *         required: true
  *         schema:
- *           type: integer
- *           example: 101
+ *           type: string
+ *           example: 550e8400-e29b-41d4-a716-446655440000
  *     requestBody:
  *       required: true
  *       content:
@@ -244,8 +261,6 @@ router.get("/:subject_id", subjectController.getSubjectById);
  *     responses:
  *       200:
  *         description: Subject Updated Successfully
- *       400:
- *         description: Invalid Subject ID
  *       404:
  *         description: Subject Not Found
  *       409:
@@ -266,13 +281,11 @@ router.put("/:subject_id", validateSubjectUpdate, subjectController.updateSubjec
  *         name: subject_id
  *         required: true
  *         schema:
- *           type: integer
- *           example: 101
+ *           type: string
+ *           example: 550e8400-e29b-41d4-a716-446655440000
  *     responses:
  *       200:
  *         description: Subject Deleted Successfully
- *       400:
- *         description: Invalid Subject ID
  *       404:
  *         description: Subject Not Found
  *       500:

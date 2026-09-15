@@ -4,13 +4,6 @@ export class SubjectDto {
 
     @Validator({
         required: true,
-        type: "number",
-        min: 1
-    })
-    subject_id!: number;
-
-    @Validator({
-        required: true,
         type: "string",
         minLength: 2,
         maxLength: 100

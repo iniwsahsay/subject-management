@@ -4,7 +4,6 @@ import subjectService from "../services/subjectService";
 import logger from "../utils/logger";
 
 interface SubjectRequestBody {
-    subject_id: number;
     subject_name: string;
     subject_code: string;
     description: string;
@@ -54,35 +53,22 @@ class SubjectController {
     }
 
 
-    // GET ALL SUBJECTS (paginated)
+    // GET ALL SUBJECTS (paginated + field/value filter)
     async getAllSubjects(
         req: Request,
         res: Response,
         next: NextFunction
     ): Promise<void> {
         try {
-            const search = req.query.search as string | undefined;
-
-            if (search && search.trim() !== "") {
-                logger.info("Search subjects request received", { search });
-
-                const subjects = await subjectService.searchSubjects(search.trim());
-
-                res.status(200).json(
-                    successResponse("success", subjects)
-                );
-
-                return;
-            }
-
-            // Parse pagination params with defaults
+            const field = req.query.field as string | undefined;
+            const value = req.query.value as string | undefined;
             const rawPage  = req.query.page  as string | undefined;
             const rawLimit = req.query.limit as string | undefined;
 
             const page  = rawPage  ? Number(rawPage)  : 1;
             const limit = rawLimit ? Number(rawLimit) : 10;
 
-            // Validate: must be positive integers
+            // Validate pagination
             if (!Number.isInteger(page) || page < 1) {
                 res.status(400).json({
                     status: "fail..!",
@@ -103,6 +89,100 @@ class SubjectController {
 
             const skip = (page - 1) * limit;
 
+            // If field+value provided, run filter
+            if (field !== undefined || value !== undefined) {
+
+                const allowedFields = [
+                    "subject_id",
+                    "subject_name",
+                    "subject_code",
+                    "description",
+                    "credits",
+                    "course_id",
+                    "school_id",
+                    "semester",
+                    "department",
+                    "email",
+                    "password"
+                ];
+
+                const numericFields = [
+                    "credits",
+                    "course_id",
+                    "school_id",
+                    "semester"
+                ];
+
+                if (!field || field.trim() === "") {
+                    res.status(400).json({
+                        status: "fail..!",
+                        message: "Validation failed",
+                        error: [{ field: "field", message: "field is required when value is provided" }]
+                    });
+                    return;
+                }
+
+                if (!allowedFields.includes(field)) {
+                    res.status(400).json({
+                        status: "fail..!",
+                        message: "Validation failed",
+                        error: [{ field: "field", message: `'${field}' is not a valid subject field. Allowed fields: ${allowedFields.join(", ")}` }]
+                    });
+                    return;
+                }
+
+                if (!value || value.trim() === "") {
+                    res.status(400).json({
+                        status: "fail..!",
+                        message: "Validation failed",
+                        error: [{ field: "value", message: "value is required and cannot be empty" }]
+                    });
+                    return;
+                }
+
+                // Datatype validation — before any DB query
+                const isNumericField = numericFields.includes(field);
+
+                if (isNumericField) {
+                    // Numeric field: value must be a valid number
+                    if (isNaN(Number(value)) || value.trim() === "") {
+                        res.status(400).json({
+                            status: "fail..!",
+                            message: "Invalid datatype",
+                            error: `Invalid value for ${field}. Expected a number. Please provide a numeric value.`
+                        });
+                        return;
+                    }
+                } else {
+                    // String field: value must not be a plain number
+                    if (!isNaN(Number(value)) && value.trim() !== "") {
+                        res.status(400).json({
+                            status: "fail..!",
+                            message: "Invalid datatype",
+                            error: `Invalid value for ${field}. Expected a string. Please provide a valid text value.`
+                        });
+                        return;
+                    }
+                }
+
+                logger.info("Filter subjects request received", { field, value, page, limit });
+
+                const result = await subjectService.filterSubjects(
+                    field,
+                    value.trim(),
+                    page,
+                    limit,
+                    skip
+                );
+
+                res.status(200).json(
+                    successResponse("Subjects fetched successfully", result)
+                );
+
+                return;
+            }
+
+            // No filter — return all subjects paginated
             logger.info("Get all subjects request received", { page, limit, skip });
 
             const result = await subjectService.getAllSubjects(page, limit, skip);
@@ -124,7 +204,7 @@ class SubjectController {
         next: NextFunction
     ): Promise<void> {
         try {
-            const subjectId = Number(req.params.subject_id);
+            const subjectId = req.params.subject_id;
 
             logger.info("Get subject by ID request received", {
                 subject_id: subjectId
@@ -153,7 +233,7 @@ class SubjectController {
         next: NextFunction
     ): Promise<void> {
         try {
-            const subjectId = Number(req.params.subject_id);
+            const subjectId = req.params.subject_id;
 
             logger.info("Update subject request received", {
                 subject_id: subjectId
@@ -181,7 +261,7 @@ class SubjectController {
         next: NextFunction
     ): Promise<void> {
         try {
-            const subjectId = Number(req.params.subject_id);
+            const subjectId = req.params.subject_id;
 
             logger.info("Delete subject request received", {
                 subject_id: subjectId

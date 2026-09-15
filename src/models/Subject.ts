@@ -1,7 +1,7 @@
 import mongoose, { Document, Schema } from "mongoose";
 
 interface ISubject extends Document {
-    subject_id: number;
+    subject_id: string;
     subject_name: string;
     subject_code: string;
     description: string;
@@ -17,10 +17,9 @@ interface ISubject extends Document {
 const subjectSchema = new Schema<ISubject>(
     {
         subject_id: {
-            type: Number,
+            type: String,
             required: true,
-            unique: true,
-            min: 1
+            unique: true
         },
 
         subject_name: {

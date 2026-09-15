@@ -1,5 +1,6 @@
 import Subject from "../models/Subject";
 import logger from "../utils/logger";
+import { v4 as uuidv4 } from "uuid";
 
 import {
     BadRequestError,
@@ -10,7 +11,6 @@ import {
 
 
 interface SubjectData {
-    subject_id: number;
     subject_name: string;
     subject_code: string;
     description: string;
@@ -47,7 +47,6 @@ class SubjectService {
         try {
 
             const {
-                subject_id,
                 subject_name,
                 subject_code,
                 description,
@@ -60,27 +59,13 @@ class SubjectService {
                 password
             } = subjectData;
 
-
-            // Check duplicate subject ID
-            const existingSubjectId = await Subject.findOne({
-                subject_id
-            });
-
-
-            if (existingSubjectId) {
-
-                throw new SubjectAlreadyExistsError(
-                    `Subject ID '${subject_id}' already exists`
-                );
-
-            }
-
+            // Auto-generate UUID for subject_id
+            const subject_id = uuidv4();
 
             // Check duplicate subject code
             const existingSubjectCode = await Subject.findOne({
                 subject_code
             });
-
 
             if (existingSubjectCode) {
 
@@ -89,7 +74,6 @@ class SubjectService {
                 );
 
             }
-
 
             // Create subject
             const subject = await Subject.create({
@@ -106,12 +90,10 @@ class SubjectService {
                 password
             });
 
-
             logger.info("Subject created successfully", {
                 subject_id: subject.subject_id,
                 subject_code: subject.subject_code
             });
-
 
             return subject;
 
@@ -130,12 +112,10 @@ class SubjectService {
 
             }
 
-
             // Re-throw custom exception
             if (error instanceof SubjectAlreadyExistsError) {
                 throw error;
             }
-
 
             // Handle MongoDB duplicate key error
             if (
@@ -146,63 +126,95 @@ class SubjectService {
             ) {
 
                 throw new SubjectAlreadyExistsError(
-                    `Subject ID '${subjectData.subject_id}' or subject code '${subjectData.subject_code}' already exists`
+                    `Subject code '${subjectData.subject_code}' already exists`
                 );
 
             }
-
 
             throw error;
         }
     }
 
 
-    // SEARCH
-    async searchSubjects(search: string) {
+    // FILTER BY FIELD
+    async filterSubjects(
+        field: string,
+        value: string,
+        page: number,
+        limit: number,
+        skip: number
+    ) {
 
         try {
 
-            const numericValue = Number(search);
-            const isNumeric = !isNaN(numericValue) && search.trim() !== "";
-
-            const conditions: object[] = [
-                { subject_name: { $regex: search, $options: "i" } },
-                { subject_code: { $regex: search, $options: "i" } },
-                { description: { $regex: search, $options: "i" } },
-                { department: { $regex: search, $options: "i" } },
-                { email: { $regex: search, $options: "i" } },
-                { password: { $regex: search, $options: "i" } }
+            const numericFields = [
+                "credits",
+                "course_id",
+                "school_id",
+                "semester"
             ];
 
-            if (isNumeric) {
-                conditions.push(
-                    { subject_id: numericValue },
-                    { credits: numericValue },
-                    { course_id: numericValue },
-                    { school_id: numericValue },
-                    { semester: numericValue }
+            let query: Record<string, unknown>;
+
+            if (numericFields.includes(field)) {
+                // Numeric fields: convert value to number for exact match
+                // For partial numeric match (e.g. value=2 matches 12, 20, 102),
+                // fetch all and filter in-memory since MongoDB stores these as numbers
+                const numericValue = Number(value);
+
+                if (isNaN(numericValue)) {
+                    throw new BadRequestError(
+                        `Invalid value for ${field}. Expected a number. Please provide a numeric value.`
+                    );
+                }
+
+                query = { [field]: numericValue };
+            } else {
+                // String fields: prefix match (case-insensitive)
+                // e.g. value=math matches math, maths, mathematics, math department
+                const escaped = value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+                query = { [field]: { $regex: `^${escaped}`, $options: "i" } };
+            }
+
+            const [subjects, totalItems] = await Promise.all([
+                Subject.find(query)
+                    .sort({ createdAt: -1 })
+                    .skip(skip)
+                    .limit(limit),
+                Subject.countDocuments(query)
+            ]);
+
+            if (subjects.length === 0) {
+                throw new NotFoundError(
+                    `No subjects found where ${field} matches '${value}'`
                 );
             }
 
-            const subjects = await Subject.find({ $or: conditions })
-                .sort({ createdAt: -1 });
+            const totalPages = Math.ceil(totalItems / limit);
 
-            if (subjects.length === 0) {
-                throw new NotFoundError("No subjects found matching the search criteria");
-            }
-
-            logger.info("Subject search completed", {
-                search,
-                count: subjects.length
+            logger.info("Subject filter completed", {
+                field,
+                value,
+                page,
+                limit,
+                totalItems
             });
 
-            return subjects;
+            return {
+                subjects,
+                pagination: {
+                    page,
+                    limit,
+                    totalItems,
+                    totalPages
+                }
+            };
 
         } catch (error: unknown) {
 
             if (error instanceof Error) {
                 logger.error(
-                    `Error searching subjects: ${error.message}`,
+                    `Error filtering subjects: ${error.message}`,
                     {
                         error: error.message,
                         errorType: error.constructor.name,
@@ -269,27 +281,13 @@ class SubjectService {
 
 
     // READ BY ID
-    async getSubjectById(subjectId: number) {
+    async getSubjectById(subjectId: string) {
 
         try {
-
-            // Validate subject ID
-            if (
-                !Number.isInteger(subjectId) ||
-                subjectId <= 0
-            ) {
-
-                throw new BadRequestError(
-                    "Invalid subject_id"
-                );
-
-            }
-
 
             const subject = await Subject.findOne({
                 subject_id: subjectId
             });
-
 
             if (!subject) {
 
@@ -297,11 +295,9 @@ class SubjectService {
 
             }
 
-
             logger.info("Subject retrieved successfully", {
                 subject_id: subjectId
             });
-
 
             return subject;
 
@@ -321,7 +317,6 @@ class SubjectService {
 
             }
 
-
             throw error;
         }
     }
@@ -329,30 +324,16 @@ class SubjectService {
 
     // UPDATE
     async updateSubject(
-        subjectId: number,
+        subjectId: string,
         subjectData: UpdateSubjectData
     ) {
 
         try {
 
-            // Validate subject ID
-            if (
-                !Number.isInteger(subjectId) ||
-                subjectId <= 0
-            ) {
-
-                throw new BadRequestError(
-                    "Invalid subject_id"
-                );
-
-            }
-
-
             // Check whether subject exists
             const subject = await Subject.findOne({
                 subject_id: subjectId
             });
-
 
             if (!subject) {
 
@@ -442,8 +423,7 @@ class SubjectService {
             // Re-throw custom exceptions
             if (
                 error instanceof SubjectNotFoundError ||
-                error instanceof SubjectAlreadyExistsError ||
-                error instanceof BadRequestError
+                error instanceof SubjectAlreadyExistsError
             ) {
 
                 throw error;
@@ -472,28 +452,14 @@ class SubjectService {
 
 
     // DELETE
-    async deleteSubject(subjectId: number) {
+    async deleteSubject(subjectId: string) {
 
         try {
-
-            // Validate subject ID
-            if (
-                !Number.isInteger(subjectId) ||
-                subjectId <= 0
-            ) {
-
-                throw new BadRequestError(
-                    "Invalid subject_id"
-                );
-
-            }
-
 
             const subject =
                 await Subject.findOneAndDelete({
                     subject_id: subjectId
                 });
-
 
             if (!subject) {
 

@@ -44,7 +44,7 @@ class NotFoundError extends AppError {
 
 // 404 - Subject Not Found
 class SubjectNotFoundError extends NotFoundError {
-    constructor(subjectId: number) {
+    constructor(subjectId: string) {
         super(
             `Subject with ID ${subjectId} not found`
         );
