@@ -6,10 +6,10 @@ The API provides complete CRUD operations for subjects along with a custom `@Val
 
 ## Features
 
-* Create a subject
+* Create a subject (UUID auto-generated for `subject_id`)
 * Get all subjects
 * Get all subjects with pagination
-* Get all subjects with optional search/filter across all fields
+* Filter subjects by a specific field and value
 * Get a subject by ID
 * Update a subject
 * Delete a subject
@@ -18,6 +18,7 @@ The API provides complete CRUD operations for subjects along with a custom `@Val
 * DTO-based validation with `SubjectDto` and `UpdateSubjectDto`
 * Generic validation runner — automatically processes any decorated field
 * Validation middleware wired into routes before controllers
+* Datatype validation for filter queries — rejects wrong types before hitting the database
 * Custom JSON body sanitizer — handles malformed values gracefully
 * Custom exception handling
 * Winston logging
@@ -36,6 +37,7 @@ The API provides complete CRUD operations for subjects along with a custom `@Val
 * **Swagger / OpenAPI**
 * **Winston**
 * **Morgan**
+* **uuid**
 * **dotenv**
 
 ## Project Structure
@@ -93,19 +95,21 @@ subject-management/
 
 ## Subject Attributes
 
-| Attribute      | Type   | Required | Constraints                                                                 | Description                |
-| -------------- | ------ | -------- | --------------------------------------------------------------------------- | -------------------------- |
-| `subject_id`   | Number | Yes      | min: 1                                                                      | Unique subject identifier  |
-| `subject_name` | String | Yes      | minLength: 2, maxLength: 100                                                | Name of the subject        |
-| `subject_code` | String | Yes      | minLength: 2, maxLength: 20                                                 | Unique subject code        |
-| `description`  | String | Yes      | minLength: 10, maxLength: 500                                               | Description of the subject |
-| `credits`      | Number | Yes      | min: 1, max: 10                                                             | Number of credits          |
-| `course_id`    | Number | Yes      | min: 1                                                                      | Associated course ID       |
-| `school_id`    | Number | Yes      | min: 1                                                                      | Associated school ID       |
-| `semester`     | Number | Yes      | min: 1, max: 8                                                              | Semester number            |
-| `department`   | String | Yes      | minLength: 2, maxLength: 50                                                 | Department name            |
-| `email`        | String | Yes      | valid email format                                                          | Contact email address      |
-| `password`     | String | Yes      | min 8 chars, uppercase, lowercase, number, special character (@#$%!)       | Account password           |
+| Attribute      | Type   | Source        | Constraints                                                           | Description                |
+| -------------- | ------ | ------------- | --------------------------------------------------------------------- | -------------------------- |
+| `subject_id`   | String | Auto-generated | UUID v4, unique                                                      | Unique subject identifier  |
+| `subject_name` | String | Client        | required, minLength: 2, maxLength: 100                                | Name of the subject        |
+| `subject_code` | String | Client        | required, minLength: 2, maxLength: 20, unique                         | Unique subject code        |
+| `description`  | String | Client        | required, minLength: 10, maxLength: 500                               | Description of the subject |
+| `credits`      | Number | Client        | required, min: 1, max: 10                                             | Number of credits          |
+| `course_id`    | Number | Client        | required, min: 1                                                      | Associated course ID       |
+| `school_id`    | Number | Client        | required, min: 1                                                      | Associated school ID       |
+| `semester`     | Number | Client        | required, min: 1, max: 8                                              | Semester number            |
+| `department`   | String | Client        | required, minLength: 2, maxLength: 50                                 | Department name            |
+| `email`        | String | Client        | required, valid email format                                          | Contact email address      |
+| `password`     | String | Client        | required, min 8 chars, uppercase, lowercase, number, special char     | Account password           |
+
+> `subject_id` is automatically generated as a UUID v4 on the server. Do not include it in the POST request body.
 
 ## Prerequisites
 
@@ -188,11 +192,12 @@ http://localhost:3000
 POST /api/subjects
 ```
 
+Do **not** include `subject_id` in the request body — it is auto-generated as a UUID v4.
+
 Example request:
 
 ```json
 {
-  "subject_id": 101,
   "subject_name": "Data Structures and Algorithms",
   "subject_code": "CS-DSA-101",
   "description": "Study of data structures, algorithms, and problem-solving techniques.",
@@ -203,6 +208,20 @@ Example request:
   "department": "Computer Science",
   "email": "student@gmail.com",
   "password": "Secret@123"
+}
+```
+
+Example response:
+
+```json
+{
+  "status": "true",
+  "message": "success",
+  "data": {
+    "subject_id": "550e8400-e29b-41d4-a716-446655440000",
+    "subject_name": "Data Structures and Algorithms",
+    ...
+  }
 }
 ```
 
@@ -220,10 +239,10 @@ Returns subjects sorted by creation date (newest first), paginated. Defaults to 
 GET /api/subjects?page=<number>&limit=<number>
 ```
 
-| Parameter | Type    | Default | Description                        |
-| --------- | ------- | ------- | ---------------------------------- |
-| `page`    | integer | 1       | Page number (must be ≥ 1)          |
-| `limit`   | integer | 10      | Number of subjects per page (≥ 1)  |
+| Parameter | Type    | Default | Description                       |
+| --------- | ------- | ------- | --------------------------------- |
+| `page`    | integer | 1       | Page number (must be ≥ 1)         |
+| `limit`   | integer | 10      | Number of subjects per page (≥ 1) |
 
 Examples:
 
@@ -255,10 +274,68 @@ Pagination response:
 Pagination behavior:
 - `skip` is calculated as `(page - 1) * limit`
 - `totalPages` is calculated as `Math.ceil(totalItems / limit)`
-- Requesting a page beyond available data returns an empty `subjects` array with a `200` status — it is not treated as an error
-- Invalid `page` or `limit` values (zero, negative, or non-numeric) return a `400` validation error
+- Requesting a page beyond available data returns an empty `subjects` array with a `200` status
+- Invalid `page` or `limit` values return a `400` validation error
 
-Invalid pagination response:
+### Filter Subjects
+
+```http
+GET /api/subjects?field=<attribute>&value=<search_value>
+```
+
+Filters subjects by a specific attribute. Both `field` and `value` must be provided together.
+
+| Parameter | Type   | Description                                      |
+| --------- | ------ | ------------------------------------------------ |
+| `field`   | string | The subject attribute to filter by (see allowed fields below) |
+| `value`   | string | The value to search for in the specified field   |
+
+Allowed fields:
+
+```text
+subject_id, subject_name, subject_code, description, credits,
+course_id, school_id, semester, department, email, password
+```
+
+Filter behavior:
+- **String fields** (`subject_name`, `subject_code`, `description`, `department`, `email`, `password`, `subject_id`) — case-insensitive prefix match. `math` matches `math`, `maths`, `mathematics`, `math department`
+- **Numeric fields** (`credits`, `course_id`, `school_id`, `semester`) — exact number match
+
+Datatype validation:
+- Providing a numeric value for a string field returns a `400` error
+- Providing a non-numeric value for a numeric field returns a `400` error
+- The database is never queried on invalid input
+
+Examples:
+
+```http
+GET /api/subjects?field=subject_name&value=math
+GET /api/subjects?field=subject_code&value=CS
+GET /api/subjects?field=department&value=computer
+GET /api/subjects?field=credits&value=4
+GET /api/subjects?field=subject_id&value=550e8400
+GET /api/subjects?field=subject_name&value=math&page=1&limit=5
+```
+
+Filter + pagination response:
+
+```json
+{
+  "status": "true",
+  "message": "Subjects fetched successfully",
+  "data": {
+    "subjects": [],
+    "pagination": {
+      "page": 1,
+      "limit": 5,
+      "totalItems": 3,
+      "totalPages": 1
+    }
+  }
+}
+```
+
+Invalid field response:
 
 ```json
 {
@@ -266,37 +343,22 @@ Invalid pagination response:
   "message": "Validation failed",
   "error": [
     {
-      "field": "page",
-      "message": "page must be a positive integer"
+      "field": "field",
+      "message": "'abc' is not a valid subject field. Allowed fields: subject_id, subject_name, ..."
     }
   ]
 }
 ```
 
-### Search Subjects
+Invalid datatype response:
 
-```http
-GET /api/subjects?search=<value>
+```json
+{
+  "status": "fail..!",
+  "message": "Invalid datatype",
+  "error": "Invalid value for credits. Expected a number. Please provide a numeric value."
+}
 ```
-
-Uses the existing GET all subjects endpoint with an optional `search` query parameter. Searches across all 11 subject fields simultaneously.
-
-If `search` is not provided, all subjects are returned as usual.
-
-Examples:
-
-```http
-GET /api/subjects?search=Mathematics
-GET /api/subjects?search=CS-DSA-101
-GET /api/subjects?search=Computer
-GET /api/subjects?search=student@gmail.com
-GET /api/subjects?search=101
-GET /api/subjects?search=4
-```
-
-Search behavior:
-- String fields (`subject_name`, `subject_code`, `description`, `department`, `email`, `password`) — case-insensitive partial match
-- Numeric fields (`subject_id`, `credits`, `course_id`, `school_id`, `semester`) — exact match when the search value is a valid number
 
 ### Get Subject by ID
 
@@ -304,10 +366,12 @@ Search behavior:
 GET /api/subjects/:subject_id
 ```
 
+`:subject_id` is the UUID generated at creation time.
+
 Example:
 
 ```http
-GET /api/subjects/101
+GET /api/subjects/550e8400-e29b-41d4-a716-446655440000
 ```
 
 ### Update Subject
@@ -319,7 +383,7 @@ PUT /api/subjects/:subject_id
 Example:
 
 ```http
-PUT /api/subjects/101
+PUT /api/subjects/550e8400-e29b-41d4-a716-446655440000
 ```
 
 Request body (all fields optional):
@@ -344,7 +408,7 @@ DELETE /api/subjects/:subject_id
 Example:
 
 ```http
-DELETE /api/subjects/101
+DELETE /api/subjects/550e8400-e29b-41d4-a716-446655440000
 ```
 
 ## Custom @Validator Decorator
@@ -369,27 +433,24 @@ The generic `validateObject` runner in `src/validators/validationRunner.ts` read
 
 ### Supported validation options
 
-| Option           | Type                                    | Description                                              |
-| ---------------- | --------------------------------------- | -------------------------------------------------------- |
-| `required`       | boolean                                 | Field must be present and non-empty                      |
-| `type`           | `"string"` \| `"number"` \| `"boolean"` | Expected JavaScript type                                 |
-| `min`            | number                                  | Minimum value (for numbers)                              |
-| `max`            | number                                  | Maximum value (for numbers)                              |
-| `minLength`      | number                                  | Minimum length (for strings)                             |
-| `maxLength`      | number                                  | Maximum length (for strings)                             |
-| `email`          | boolean                                 | Validates email format using regex                       |
-| `pattern`        | RegExp                                  | Custom regex pattern the value must match                |
+| Option           | Type                                    | Description                                                |
+| ---------------- | --------------------------------------- | ---------------------------------------------------------- |
+| `required`       | boolean                                 | Field must be present and non-empty                        |
+| `type`           | `"string"` \| `"number"` \| `"boolean"` | Expected JavaScript type                                   |
+| `min`            | number                                  | Minimum value (for numbers)                                |
+| `max`            | number                                  | Maximum value (for numbers)                                |
+| `minLength`      | number                                  | Minimum length (for strings)                               |
+| `maxLength`      | number                                  | Maximum length (for strings)                               |
+| `email`          | boolean                                 | Validates email format using regex                         |
+| `pattern`        | RegExp                                  | Custom regex pattern the value must match                  |
 | `patternMessage` | string                                  | Custom error message shown when `pattern` validation fails |
 
 ### DTOs
 
-`SubjectDto` — used for create (all fields required):
+`SubjectDto` — used for create (`subject_id` excluded — auto-generated):
 
 ```ts
 export class SubjectDto {
-
-    @Validator({ required: true, type: "number", min: 1 })
-    subject_id!: number;
 
     @Validator({ required: true, type: "string", minLength: 2, maxLength: 100 })
     subject_name!: string;
@@ -501,8 +562,8 @@ http://localhost:3000/Subject-Management-API
 Swagger allows you to view and test all available API endpoints directly from the browser.
 
 The Swagger schema includes two separate schemas:
-- `Subject` — used for POST, contains all 11 required fields
-- `UpdateSubject` — used for PUT, contains all updatable fields (all optional, no `subject_id`)
+- `Subject` — used for POST, contains all 10 client-provided fields (`subject_id` is `readOnly`)
+- `UpdateSubject` — used for PUT, contains all updatable fields (all optional)
 
 ## Health Check
 
@@ -562,9 +623,9 @@ Example response:
 
 The API uses custom error classes for common application errors:
 
-* `400 Bad Request` — invalid input or validation failure
-* `404 Not Found` — subject not found
-* `409 Conflict` — subject ID or code already exists
+* `400 Bad Request` — invalid input, validation failure, or wrong datatype in filter
+* `404 Not Found` — subject not found or no filter results
+* `409 Conflict` — subject code already exists
 * `500 Internal Server Error` — unexpected error
 
 Custom error classes in `src/utils/AppError.ts`:
@@ -598,13 +659,13 @@ Validation is handled by the `@Validator` decorator system before the request re
 Route flow:
 
 ```text
-POST /api/subjects  →  validateSubject middleware  →  subjectController.createSubject
+POST /api/subjects      →  validateSubject middleware       →  subjectController.createSubject
 PUT  /api/subjects/:id  →  validateSubjectUpdate middleware  →  subjectController.updateSubject
 ```
 
-Validation rules per field:
+Validation rules per field (POST):
 
-* `subject_id` — required, number, min: 1
+* `subject_id` — auto-generated UUID, not validated from client input
 * `subject_name` — required, string, minLength: 2, maxLength: 100
 * `subject_code` — required, string, minLength: 2, maxLength: 20
 * `description` — required, string, minLength: 10, maxLength: 500
@@ -654,7 +715,9 @@ POST    /api/subjects
 GET     /api/subjects
 GET     /api/subjects?page=1&limit=10
 GET     /api/subjects?page=2&limit=5
-GET     /api/subjects?search=Mathematics
+GET     /api/subjects?field=subject_name&value=math
+GET     /api/subjects?field=credits&value=4
+GET     /api/subjects?field=subject_name&value=math&page=1&limit=5
 GET     /api/subjects/:subject_id
 PUT     /api/subjects/:subject_id
 DELETE  /api/subjects/:subject_id
@@ -662,7 +725,7 @@ DELETE  /api/subjects/:subject_id
 
 ## Git Branch
 
-The custom `@Validator` decorator system, `email`/`password` fields, search functionality, pagination, and Swagger schema updates were all implemented on `main`.
+All features including the custom `@Validator` decorator system, `email`/`password` fields, field+value filter with datatype validation, pagination, UUID auto-generation for `subject_id`, and Swagger schema updates were implemented on `main`.
 
 ## Author
 
