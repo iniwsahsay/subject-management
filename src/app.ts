@@ -3,6 +3,7 @@ import morgan from "morgan";
 import swaggerUi from "swagger-ui-express";
 
 import subjectRoutes from "./routes/subjectRoutes";
+import authRoutes from "./routes/authRoutes";
 import swaggerSpec from "./config/swagger";
 import logger from "./utils/logger";
 import notFound from "./middleware/notFound";
@@ -75,7 +76,10 @@ app.use(
     swaggerUi.setup(swaggerSpec)
 );
 
-// Subject routes
+// Auth routes (public — no JWT required)
+app.use("/api/auth", authRoutes);
+
+// Subject routes (protected — JWT required, see subjectRoutes.ts)
 app.use("/api/subjects", subjectRoutes);
 
 // Handle unknown routes

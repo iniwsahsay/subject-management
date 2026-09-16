@@ -78,11 +78,33 @@ class SubjectAlreadyExistsError extends ConflictError {
 }
 
 
+// 401 - Unauthorized
+// Used when: token is missing, malformed, expired, invalid signature,
+// or required claims (userId, tenantId, roles, permissions) are missing/invalid.
+class UnauthorizedError extends AppError {
+    constructor(message: string = "Unauthorized") {
+        super(message, 401, "UNAUTHORIZED");
+    }
+}
+
+
+// 403 - Forbidden
+// Used when: token is valid and claims are valid, but the user's
+// role or permission does not allow the requested operation.
+class ForbiddenError extends AppError {
+    constructor(message: string = "Forbidden") {
+        super(message, 403, "FORBIDDEN");
+    }
+}
+
+
 export {
     AppError,
     BadRequestError,
     NotFoundError,
     SubjectNotFoundError,
     ConflictError,
-    SubjectAlreadyExistsError
+    SubjectAlreadyExistsError,
+    UnauthorizedError,
+    ForbiddenError
 };

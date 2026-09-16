@@ -4,6 +4,10 @@ import {
     validateSubject,
     validateSubjectUpdate
 } from "../middleware/validationMiddleware";
+import {
+    authenticateJWT,
+    authorizePermission
+} from "../middleware/authMiddleware";
 
 const router = express.Router();
 
@@ -104,6 +108,8 @@ const router = express.Router();
  *   post:
  *     summary: Create a new subject
  *     tags: [Subjects]
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -115,12 +121,16 @@ const router = express.Router();
  *         description: Subject Created Successfully
  *       400:
  *         description: Invalid Subject Data
+ *       401:
+ *         description: Unauthorized — token missing, invalid, or expired
+ *       403:
+ *         description: Forbidden — valid token but insufficient permission (requires SUBJECT_CREATE)
  *       409:
  *         description: Subject ID or Code Already Exists
  *       500:
  *         description: Internal Server Error
  */
-router.post("/", validateSubject, subjectController.createSubject);
+router.post("/", authenticateJWT, authorizePermission("SUBJECT_CREATE"), validateSubject, subjectController.createSubject);
 
 /**
  * @swagger
@@ -128,6 +138,8 @@ router.post("/", validateSubject, subjectController.createSubject);
  *   get:
  *     summary: Get all subjects (paginated) or filter by a specific field
  *     tags: [Subjects]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: query
  *         name: field
@@ -209,12 +221,16 @@ router.post("/", validateSubject, subjectController.createSubject);
  *                           example: 3
  *       400:
  *         description: "Invalid field name, missing/empty value, wrong datatype (e.g. text for a numeric field or number for a string field), or invalid pagination"
+ *       401:
+ *         description: Unauthorized — token missing, invalid, or expired
+ *       403:
+ *         description: Forbidden — valid token but insufficient permission (requires SUBJECT_READ)
  *       404:
  *         description: No subjects found matching the filter
  *       500:
  *         description: Internal Server Error
  */
-router.get("/", subjectController.getAllSubjects);
+router.get("/", authenticateJWT, authorizePermission("SUBJECT_READ"), subjectController.getAllSubjects);
 
 /**
  * @swagger
@@ -222,6 +238,8 @@ router.get("/", subjectController.getAllSubjects);
  *   get:
  *     summary: Get a subject by subject ID
  *     tags: [Subjects]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: subject_id
@@ -232,12 +250,16 @@ router.get("/", subjectController.getAllSubjects);
  *     responses:
  *       200:
  *         description: Subject Found
+ *       401:
+ *         description: Unauthorized — token missing, invalid, or expired
+ *       403:
+ *         description: Forbidden — valid token but insufficient permission (requires SUBJECT_READ)
  *       404:
  *         description: Subject Not Found
  *       500:
  *         description: Internal Server Error
  */
-router.get("/:subject_id", subjectController.getSubjectById);
+router.get("/:subject_id", authenticateJWT, authorizePermission("SUBJECT_READ"), subjectController.getSubjectById);
 
 /**
  * @swagger
@@ -245,6 +267,8 @@ router.get("/:subject_id", subjectController.getSubjectById);
  *   put:
  *     summary: Update a subject
  *     tags: [Subjects]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: subject_id
@@ -261,6 +285,10 @@ router.get("/:subject_id", subjectController.getSubjectById);
  *     responses:
  *       200:
  *         description: Subject Updated Successfully
+ *       401:
+ *         description: Unauthorized — token missing, invalid, or expired
+ *       403:
+ *         description: Forbidden — valid token but insufficient permission (requires SUBJECT_UPDATE)
  *       404:
  *         description: Subject Not Found
  *       409:
@@ -268,7 +296,7 @@ router.get("/:subject_id", subjectController.getSubjectById);
  *       500:
  *         description: Internal Server Error
  */
-router.put("/:subject_id", validateSubjectUpdate, subjectController.updateSubject);
+router.put("/:subject_id", authenticateJWT, authorizePermission("SUBJECT_UPDATE"), validateSubjectUpdate, subjectController.updateSubject);
 
 /**
  * @swagger
@@ -276,6 +304,8 @@ router.put("/:subject_id", validateSubjectUpdate, subjectController.updateSubjec
  *   delete:
  *     summary: Delete a subject
  *     tags: [Subjects]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: subject_id
@@ -286,11 +316,15 @@ router.put("/:subject_id", validateSubjectUpdate, subjectController.updateSubjec
  *     responses:
  *       200:
  *         description: Subject Deleted Successfully
+ *       401:
+ *         description: Unauthorized — token missing, invalid, or expired
+ *       403:
+ *         description: Forbidden — valid token but insufficient permission (requires SUBJECT_DELETE)
  *       404:
  *         description: Subject Not Found
  *       500:
  *         description: Internal Server Error
  */
-router.delete("/:subject_id", subjectController.deleteSubject);
+router.delete("/:subject_id", authenticateJWT, authorizePermission("SUBJECT_DELETE"), subjectController.deleteSubject);
 
 export default router;
