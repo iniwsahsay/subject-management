@@ -96,6 +96,20 @@ export function authenticateJWT(
 
 function validateClaims(payload: Record<string, unknown>): void {
 
+    // Allowed roles defined by the application
+    const allowedRoles: Role[] = [
+        "ADMIN",
+        "USER"
+    ];
+
+    // Allowed permissions defined by the Subject Management service
+    const allowedPermissions: Permission[] = [
+        "SUBJECT_CREATE",
+        "SUBJECT_READ",
+        "SUBJECT_UPDATE",
+        "SUBJECT_DELETE"
+    ];
+
     // userId — must be a non-empty string
     if (
         !payload.userId ||
@@ -106,6 +120,7 @@ function validateClaims(payload: Record<string, unknown>): void {
             "Invalid token: userId claim is missing or not a valid string"
         );
     }
+
 
     // tenantId — must be a non-empty string
     if (

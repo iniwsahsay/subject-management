@@ -82,11 +82,23 @@ const subjectSchema = new Schema<ISubject>(
             type: String,
             required: true
         }
-
-
     },
     {
-        timestamps: true
+        timestamps: true,
+
+        toJSON: {
+            transform: (_doc, ret) => {
+                const { _id, ...rest } = ret;
+                return rest;
+            }
+        },
+
+        toObject: {
+            transform: (_doc, ret) => {
+                const { _id, ...rest } = ret;
+                return rest;
+            }
+        }
     }
 );
 

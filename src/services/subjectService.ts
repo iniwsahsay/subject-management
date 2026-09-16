@@ -170,10 +170,19 @@ class SubjectService {
 
                 query = { [field]: numericValue };
             } else {
-                // String fields: prefix match (case-insensitive)
-                // e.g. value=math matches math, maths, mathematics, math department
+                // String fields: exact match (case-insensitive)
+                // Example:
+                // value=Mathematics -> matches Mathematics
+                // value=math -> does NOT match Mathematics
+
                 const escaped = value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-                query = { [field]: { $regex: `^${escaped}`, $options: "i" } };
+
+                query = {
+                    [field]: {
+                        $regex: `^${escaped}$`,
+                        $options: "i"
+                    }
+                };
             }
 
             const [subjects, totalItems] = await Promise.all([
